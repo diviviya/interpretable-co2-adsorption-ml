@@ -1,0 +1,15 @@
+{
+    "target": "CO2 uptake (mmol/g)",
+    "features": [
+        "Surface Area (m2/g)",
+        "Total Pore Volume(cm3/g)",
+        "Micropore Volume (cm3/g)",
+        "C (%)",
+        "H (%)",
+        "N (%)",
+        "O (%)",
+        "S (%)",
+        "Temp (\u00b0C)",
+        "Pressure (bar)"
+    ]
+}

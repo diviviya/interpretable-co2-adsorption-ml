@@ -1,0 +1,8 @@
+{
+    "random_state": 42,
+    "test_size": 0.2,
+    "validation_size_within_development": 0.2,
+    "train_rows": 336,
+    "validation_rows": 84,
+    "test_rows": 106
+}
