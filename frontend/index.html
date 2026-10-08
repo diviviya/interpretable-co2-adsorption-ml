@@ -1,36 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CarbonPredict</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CO₂ Adsorption Predictor</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div>
-        <h1>CarbonPredict</h1>
-        <p>Welcome to CarbonPredict!</p>
-        <h2>Pore Characteristics</h2>
-        <label for="inputField">Enter Specific Surface Area (m²/g):</label>
-        <input type="text" id="inputField" placeholder="(m²/g)">
-        <label for="inputField2">Enter Pore Volume (cm³/g):</label>
-        <input type="text" id="inputField2" placeholder="(cm³/g)">
-        <label for="inputField3">Enter Pore size (nm):</label>
-        <input type="text" id="inputField3" placeholder="(nm)">
-        <h2>Material Properties</h2>
-        <label for="inputField4">Enter Particle Size (nm):</label>
-        <input type="text" id="inputField4" placeholder="(nm)">
-        <label for="inputField5">Enter Morphology (g/cm³):</label>
-        <input type="text" id="inputField5" placeholder="(g/cm³)">  
-        <label for="inputField6">Enter Dopant/Modifier :</label>
-        <input type="text" id="inputField6" placeholder="">
-        <h2>Experimental Conditions</h2>
-        <label for="inputField7">Enter Temperature (°C):</label>
-        <input type="text" id="inputField7" placeholder="(°C)">
-        <label for="inputField8">Enter Pressure (atm):</label>
-        <input type="text" id="inputField8" placeholder="atm">
-        <label for="inputField9">Enter Time (h):</label>
-        <input type="text" id="inputField9" placeholder="h">
+<header class="topbar">
+  <div class="brand"><div class="logo">CO₂</div><div><b>CO₂ Adsorption Predictor</b><small>Biomass-derived porous carbon · ML workspace</small></div></div>
+  <div class="status"><i></i> Prediction interface</div>
+</header>
 
+<main>
+<section class="hero">
+  <div>
+    <p class="eyebrow">PREDICTION WORKSPACE</p>
+    <h1>Predict CO₂ uptake from material properties.</h1>
+    <p>Enter the 10 experimental features used by the project model. The target is CO₂ uptake in mmol/g.</p>
+  </div>
+  <div class="target-card"><small>TARGET</small><strong>CO₂ uptake</strong><span>mmol/g</span></div>
+</section>
+
+<div class="grid">
+<section class="panel">
+  <div class="heading"><div><p class="eyebrow">INPUT FEATURES</p><h2>Material & adsorption conditions</h2></div><button id="example" class="light">Load example</button></div>
+  <form id="form">
+    <div class="fields">
+      <label>Surface Area <small>m²/g</small><input name="surface_area" type="number" step="any" placeholder="e.g. 1420" required></label>
+      <label>Total Pore Volume <small>cm³/g</small><input name="total_pore_volume" type="number" step="any" placeholder="e.g. 0.74" required></label>
+      <label>Micropore Volume <small>cm³/g</small><input name="micropore_volume" type="number" step="any" placeholder="e.g. 0.48" required></label>
+      <label>Carbon <small>C %</small><input name="carbon_pct" type="number" step="any" placeholder="e.g. 78.9" required></label>
+      <label>Hydrogen <small>H %</small><input name="hydrogen_pct" type="number" step="any" placeholder="e.g. 1.5" required></label>
+      <label>Nitrogen <small>N %</small><input name="nitrogen_pct" type="number" step="any" placeholder="e.g. 2.26" required></label>
+      <label>Oxygen <small>O %</small><input name="oxygen_pct" type="number" step="any" placeholder="e.g. 15.05" required></label>
+      <label>Sulfur <small>S %</small><input name="sulfur_pct" type="number" step="any" placeholder="e.g. 0" required></label>
+      <label>Temperature <small>°C</small><input name="temperature_c" type="number" step="any" placeholder="e.g. 25" required></label>
+      <label>Pressure <small>bar</small><input name="pressure_bar" type="number" step="any" placeholder="e.g. 1" required></label>
     </div>
+    <div class="actions"><button type="button" id="clear" class="light">Clear</button><button class="primary" id="predict">Predict CO₂ uptake <b>→</b></button></div>
+  </form>
+</section>
+
+<aside class="panel result">
+  <div class="heading"><div><p class="eyebrow">PREDICTION</p><h2>Model output</h2></div><span class="badge">ML MODEL</span></div>
+  <div id="result" class="resultbox"><div><div class="icon">↗</div><h3>Your prediction will appear here</h3><p>Fill the features and click the prediction button.</p></div></div>
+  <div class="meta"><div><small>Target</small><b>CO₂ uptake</b></div><div><small>Unit</small><b>mmol/g</b></div></div>
+  <div class="notice"><b>Prototype</b><br>This UI is ready to connect to your FastAPI model endpoint. The current demo output is not a trained-model prediction.</div>
+</aside>
+</div>
+
+<section class="cards">
+  <article><em>01</em><h3>Material properties</h3><p>Surface area, pore volumes and elemental composition describe the porous carbon.</p></article>
+  <article><em>02</em><h3>Adsorption conditions</h3><p>Temperature and pressure describe the experimental adsorption conditions.</p></article>
+  <article><em>03</em><h3>Interpretability</h3><p>SHAP explanations can be added once the final trained model is connected.</p></article>
+</section>
+</main>
+<footer>CO₂ Adsorption ML Project · Biomass waste-derived porous carbons</footer>
+<script src="script.js"></script>
 </body>
 </html>
