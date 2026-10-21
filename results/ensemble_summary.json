@@ -1,0 +1,29 @@
+{
+    "notebook": "07_ensemble_construction.ipynb",
+    "target": "CO2 uptake (mmol/g)",
+    "features": [
+        "Surface Area (m2/g)",
+        "Total Pore Volume(cm3/g)",
+        "Micropore Volume (cm3/g)",
+        "C (%)",
+        "H (%)",
+        "N (%)",
+        "O (%)",
+        "S (%)",
+        "Temp (°C)",
+        "Pressure (bar)"
+    ],
+    "validation_rows": 84,
+    "test_rows_reserved": 106,
+    "test_set_used": false,
+    "strategies": [
+        "Simple averaging",
+        "Validation-optimized non-negative weights",
+        "Entropy-TOPSIS weighting"
+    ],
+    "best_validation_candidate": "Validation-Optimized Weighted Ensemble",
+    "best_validation_rmse": 0.5758990962094592,
+    "best_validation_mae": 0.3741445845059173,
+    "best_validation_r2": 0.8537341443326911,
+    "caution": "Validation-optimized weights and entropy-TOPSIS weights are validation-informed; their validation scores may be optimistic. Final generalization must be assessed on the untouched test set."
+}

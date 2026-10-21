@@ -1,0 +1,37 @@
+{
+    "notebook": "05_advanced_model_comparison.ipynb",
+    "random_state": 42,
+    "dataset": "data/Processed_527_datapoints.csv",
+    "split_file": "artifacts/splits/split_assignments.csv",
+    "target": "CO2 uptake (mmol/g)",
+    "features": [
+        "Surface Area (m2/g)",
+        "Total Pore Volume(cm3/g)",
+        "Micropore Volume (cm3/g)",
+        "C (%)",
+        "H (%)",
+        "N (%)",
+        "O (%)",
+        "S (%)",
+        "Temp (°C)",
+        "Pressure (bar)"
+    ],
+    "training_rows": 336,
+    "validation_rows": 84,
+    "test_rows_reserved": 106,
+    "models_trained": [
+        "Random Forest",
+        "Extra Trees",
+        "Gradient Boosting",
+        "XGBoost",
+        "LightGBM",
+        "CatBoost"
+    ],
+    "selection_metric": "RMSE",
+    "best_initial_model_by_validation_rmse": "CatBoost",
+    "best_initial_validation_rmse": 0.6023772336490979,
+    "best_initial_validation_mae": 0.37657727723951867,
+    "best_initial_validation_r2": 0.8399752115914693,
+    "preprocessing": "Median imputation inside each model pipeline",
+    "test_set_used": false
+}

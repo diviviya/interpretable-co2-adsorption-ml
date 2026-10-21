@@ -1,0 +1,35 @@
+{
+    "project_name": "Interpretable Ensemble Learning for CO2 Adsorption on Biomass-Derived Porous Carbons",
+    "model_bundle": "co2_adsorption_ensemble.joblib",
+    "input_schema": "input_schema.json",
+    "target_column": "CO2 uptake (mmol/g)",
+    "feature_columns": [
+        "Surface Area (m2/g)",
+        "Total Pore Volume(cm3/g)",
+        "Micropore Volume (cm3/g)",
+        "C (%)",
+        "H (%)",
+        "N (%)",
+        "O (%)",
+        "S (%)",
+        "Temp (°C)",
+        "Pressure (bar)"
+    ],
+    "ensemble_strategy": "Validation-optimized weighted ensemble",
+    "ensemble_weights": {
+        "Random Forest": 2.4734372406600288e-17,
+        "Extra Trees": 0.0,
+        "Gradient Boosting": 0.0,
+        "XGBoost": 0.1770190145743111,
+        "LightGBM": 0.2765655042227543,
+        "CatBoost": 0.5464154812029346
+    },
+    "test_metrics": {
+        "MAE": 0.5219517818143666,
+        "RMSE": 0.7063571567459624,
+        "R2": 0.8172909493373284
+    },
+    "test_metrics_source": "results/final_test_results.csv",
+    "prediction_unit": "mmol/g",
+    "note": "Metrics are from the held-out test evaluation. The ensemble weights were selected on the validation set."
+}

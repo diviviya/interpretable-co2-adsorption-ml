@@ -1,0 +1,59 @@
+{
+    "project_name": "Interpretable Ensemble Learning for CO2 Adsorption on Biomass-Derived Porous Carbons",
+    "target_column": "CO2 uptake (mmol/g)",
+    "target_unit": "mmol/g",
+    "features": [
+        {
+            "name": "Surface Area (m2/g)",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "Total Pore Volume(cm3/g)",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "Micropore Volume (cm3/g)",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "C (%)",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "H (%)",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "N (%)",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "O (%)",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "S (%)",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "Temp (°C)",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "Pressure (bar)",
+            "type": "number",
+            "required": true
+        }
+    ],
+    "missing_value_handling": "The fitted model pipelines apply median imputation to missing feature values. The API should still validate request structure and reject non-numeric or non-finite values.",
+    "ensemble_strategy": "Validation-optimized weighted ensemble"
+}

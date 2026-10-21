@@ -1,0 +1,37 @@
+{
+    "notebook": "08_final_test_and_explainability.ipynb",
+    "target": "CO2 uptake (mmol/g)",
+    "features": [
+        "Surface Area (m2/g)",
+        "Total Pore Volume(cm3/g)",
+        "Micropore Volume (cm3/g)",
+        "C (%)",
+        "H (%)",
+        "N (%)",
+        "O (%)",
+        "S (%)",
+        "Temp (°C)",
+        "Pressure (bar)"
+    ],
+    "training_rows": 336,
+    "validation_rows": 84,
+    "test_rows": 106,
+    "test_used_for_model_selection": false,
+    "ensemble_strategy": "Validation-optimized weighted ensemble",
+    "ensemble_test_metrics": {
+        "MAE": 0.5219517818143666,
+        "RMSE": 0.7063571567459624,
+        "R2": 0.8172909493373284
+    },
+    "catboost_test_metrics": {
+        "MAE": 0.5445378265325039,
+        "RMSE": 0.7355312105283645,
+        "R2": 0.8018867269826313
+    },
+    "explainability": {
+        "SHAP": "TreeSHAP explanations for the tuned CatBoost model",
+        "PDP": "Partial dependence plots for the three highest-SHAP features",
+        "ALE": "First-order ALE plots for the three highest-SHAP features"
+    },
+    "interpretation_scope": "SHAP, PDP, and ALE explain CatBoost, not the full weighted ensemble."
+}

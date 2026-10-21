@@ -1,0 +1,36 @@
+{
+    "notebook": "06_hyperparameter_tuning.ipynb",
+    "random_state": 42,
+    "trials_per_model": 20,
+    "cross_validation_folds": 3,
+    "optimization_metric": "RMSE",
+    "target": "CO2 uptake (mmol/g)",
+    "features": [
+        "Surface Area (m2/g)",
+        "Total Pore Volume(cm3/g)",
+        "Micropore Volume (cm3/g)",
+        "C (%)",
+        "H (%)",
+        "N (%)",
+        "O (%)",
+        "S (%)",
+        "Temp (°C)",
+        "Pressure (bar)"
+    ],
+    "training_rows": 336,
+    "validation_rows": 84,
+    "test_rows_reserved": 106,
+    "test_set_used_for_tuning": false,
+    "best_tuned_model_by_validation_rmse": "CatBoost",
+    "best_validation_rmse": 0.5897842113474597,
+    "best_validation_mae": 0.39091232315150154,
+    "best_validation_r2": 0.8465960838250167,
+    "model_names": [
+        "Random Forest",
+        "Extra Trees",
+        "Gradient Boosting",
+        "XGBoost",
+        "LightGBM",
+        "CatBoost"
+    ]
+}

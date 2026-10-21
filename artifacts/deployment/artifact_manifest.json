@@ -1,0 +1,14 @@
+{
+    "co2_adsorption_ensemble.joblib": {
+        "sha256": "27ed2567dd74ba78ba01ea4226e8ab864b3a441411d4721c2f8d60864ca7742e",
+        "size_bytes": 14201322
+    },
+    "input_schema.json": {
+        "sha256": "7a990ecc66a569993dc0f79b57c9c050ba59e6fa9ef18ae1c86098fff3c8428d",
+        "size_bytes": 1634
+    },
+    "model_metadata.json": {
+        "sha256": "3500bb1f581d4ca71e7090cfe550a3f20bac560427862b81d128c1cf7b88fce9",
+        "size_bytes": 1192
+    }
+}
