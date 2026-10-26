@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CO₂ Adsorption Predictor · Explainability</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <a href="index.html" class="brand">
+            <div class="logo">CO₂</div>
+            <div>
+                <b>CO₂ Adsorption Predictor</b>
+                <small>Biomass-Derived Porous Carbons &bull; Interpretable ML</small>
+            </div>
+        </a>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="prediction.html">Prediction</a></li>
+                <li><a href="models.html">Models</a></li>
+                <li><a href="explainability.html" class="active">Explainability</a></li>
+                <li><a href="what-if.html">What-If Analysis</a></li>
+                <li><a href="methodology.html">Methodology</a></li>
+            </ul>
+        </nav>
+        <div id="backend-status" class="nav-badge"><i></i> Checking System...</div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div>
+                <p class="eyebrow">INTERPRETABLE MACHINE LEARNING</p>
+                <h1>Model Explainability & Feature Effects</h1>
+                <p class="lead">Deconstructing model predictions using cooperative game theory (SHAP), Partial Dependence (PDP), and Accumulated Local Effects (ALE) to verify chemical and thermodynamic consistency.</p>
+            </div>
+        </section>
+
+        <!-- CAUTION NOTICE -->
+        <div class="panel" style="background: #fbfbf9; border-left: 4px solid var(--warning); padding: 18px 24px; margin-bottom: 30px;">
+            <b style="color: var(--warning); font-size: 14px;">Scientific Interpretation Disclaimer</b>
+            <p style="font-size: 13px; color: #474f48; margin-top: 4px;">
+                SHAP values and Partial Dependence curves quantify statistical feature importance and learned marginal associations within the empirical dataset. They provide crucial interpretability into model behavior, but they do <b>not</b> constitute proof of causal mechanisms.
+            </p>
+        </div>
+
+        <!-- GLOBAL SHAP TABLE & SUMMARY PLOT -->
+        <div class="grid-2">
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Global Feature Ranking (Mean |SHAP|)</h2>
+                    <span class="badge-tag">CatBoost Benchmark</span>
+                </div>
+                <p style="font-size: 13px; color: var(--muted); margin-bottom: 14px;">
+                    Average absolute impact of each feature on CO₂ uptake across all test samples:
+                </p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Feature Name</th>
+                                <th>Mean |SHAP| <small>(mmol/g)</small></th>
+                                <th>Relative Importance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="global-shap-body">
+                            <tr><td colspan="4" style="text-align:center; padding: 20px;">Loading feature rankings...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 20px; font-size: 12.5px; color: var(--muted); line-height: 1.5;">
+                    <b>Key Finding:</b> Operating conditions (Temperature & Pressure) and textural parameters (Surface Area & Pore Volumes) exert the highest influence on uptake capacity, followed by nitrogen heteroatom content.
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>SHAP Summary Distribution (Beeswarm)</h2>
+                </div>
+                <div class="figure-card" style="box-shadow: none; padding: 0; border: none;">
+                    <img src="assets/images/shap_summary_plot.png" alt="SHAP Beeswarm Summary Plot">
+                    <p style="font-size: 12px; color: var(--muted); margin-top: 10px;">
+                        Red dots denote high feature values; blue dots denote low values. Position on the x-axis indicates whether that value increased (positive SHAP) or decreased (negative SHAP) predicted CO₂ uptake.
+                    </p>
+                </div>
+            </section>
+        </div>
+
+        <!-- PDP & ALE SECTION -->
+        <h2 style="font-size: 20px; font-weight: 750; margin-top: 35px; margin-bottom: 18px;">Partial Dependence & Accumulated Local Effects</h2>
+
+        <div class="grid-3">
+            <div class="figure-card">
+                <h4>Partial Dependence Plots (PDP)</h4>
+                <p>Marginal effect of individual features on predicted uptake across the feature domain.</p>
+                <img src="assets/images/catboost_partial_dependence.png" alt="CatBoost Partial Dependence Plots">
+            </div>
+
+            <div class="figure-card">
+                <h4>ALE: Pressure Effect</h4>
+                <p>Accumulated local effect showing monotonic uptake gains with increasing adsorption pressure.</p>
+                <img src="assets/images/ale_pressure_(bar).png" alt="ALE Pressure Plot">
+            </div>
+
+            <div class="figure-card">
+                <h4>ALE: Surface Area Effect</h4>
+                <p>Accumulated local effect of BET surface area expansion on gas storage capacity.</p>
+                <img src="assets/images/ale_surface_area_(m2_g).png" alt="ALE Surface Area Plot">
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        CO₂ Adsorption ML Project &bull; Biomass-Derived Porous Carbons &bull; Interpretable Ensemble Platform
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/explainability.js"></script>
+</body>
+</html>

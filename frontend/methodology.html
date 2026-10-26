@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CO₂ Adsorption Predictor · Methodology</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <a href="index.html" class="brand">
+            <div class="logo">CO₂</div>
+            <div>
+                <b>CO₂ Adsorption Predictor</b>
+                <small>Biomass-Derived Porous Carbons &bull; Interpretable ML</small>
+            </div>
+        </a>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="prediction.html">Prediction</a></li>
+                <li><a href="models.html">Models</a></li>
+                <li><a href="explainability.html">Explainability</a></li>
+                <li><a href="what-if.html">What-If Analysis</a></li>
+                <li><a href="methodology.html" class="active">Methodology</a></li>
+            </ul>
+        </nav>
+        <div id="backend-status" class="nav-badge"><i></i> Checking System...</div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div>
+                <p class="eyebrow">SCIENTIFIC DOCUMENTATION</p>
+                <h1>Methodology & Engineering Architecture</h1>
+                <p class="lead">Complete documentation of dataset curation, feature engineering, cross-validation, hyperparameter tuning, ensembling, and explainability methods.</p>
+            </div>
+        </section>
+
+        <div class="panel">
+            <h2 style="font-size: 19px; font-weight: 750; margin-bottom: 12px;">1. Dataset Curation & Overview</h2>
+            <p style="font-size: 14px; color: #354238; line-height: 1.6; margin-bottom: 14px;">
+                The dataset comprises <b>527 verified experimental data points</b> collected from peer-reviewed literature investigating CO₂ adsorption on porous carbon materials synthesized from biomass waste precursors (agricultural residues, forestry byproducts, and industrial bio-waste).
+            </p>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Parameter Category</th>
+                            <th>Features Included</th>
+                            <th>Measurement Unit</th>
+                            <th>Scientific Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><b>Textural Properties</b></td>
+                            <td>Surface Area, Total Pore Volume, Micropore Volume</td>
+                            <td>m²/g, cm³/g, cm³/g</td>
+                            <td>Quantifies physical surface exposure and internal cavity space for gas condensation.</td>
+                        </tr>
+                        <tr>
+                            <td><b>Elemental Composition</b></td>
+                            <td>C, H, N, O, S</td>
+                            <td>wt%</td>
+                            <td>Characterizes carbon skeleton purity and heteroatom chemical affinity (especially basic N sites).</td>
+                        </tr>
+                        <tr>
+                            <td><b>Operational Conditions</b></td>
+                            <td>Temperature, Pressure</td>
+                            <td>°C, bar</td>
+                            <td>Thermodynamic state variables governing adsorption-desorption equilibrium.</td>
+                        </tr>
+                        <tr class="highlight-row">
+                            <td><b>Target Variable</b></td>
+                            <td>CO₂ Uptake Capacity</td>
+                            <td>mmol/g</td>
+                            <td>Equilibrium quantity of CO₂ adsorbed per gram of porous carbon.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="panel">
+                <h2 style="font-size: 18px; font-weight: 750; margin-bottom: 12px;">2. Preprocessing & Leakage Prevention</h2>
+                <ul style="font-size: 13.5px; color: #354238; line-height: 1.6; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+                    <li><b>Stratified Data Partitioning:</b> The 527 observations were partitioned into train, validation, and held-out test splits with fixed random seeds.</li>
+                    <li><b>Median Imputation in Scikit-Learn Pipelines:</b> To prevent data leakage, <code>SimpleImputer(strategy='median')</code> was fitted solely on training splits and bundled directly inside each model's pipeline.</li>
+                    <li><b>No Scale Distortion:</b> Tree-based architectures do not require feature scaling, preserving original physical units throughout all steps.</li>
+                </ul>
+            </div>
+
+            <div class="panel">
+                <h2 style="font-size: 18px; font-weight: 750; margin-bottom: 12px;">3. Hyperparameter Tuning & Cross-Validation</h2>
+                <ul style="font-size: 13.5px; color: #354238; line-height: 1.6; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+                    <li><b>Optuna Bayesian Optimization:</b> Hyperparameters were systematically explored across hundreds of trials to maximize validation generalization.</li>
+                    <li><b>Algorithms Tuned:</b> Random Forest, Extra Trees, Gradient Boosting, XGBoost, LightGBM, and CatBoost.</li>
+                    <li><b>Loss Function:</b> Mean Squared Error (MSE) minimization on 5-fold cross-validation folds.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 style="font-size: 19px; font-weight: 750; margin-bottom: 12px;">4. Ensemble Construction Strategy</h2>
+            <p style="font-size: 14px; color: #354238; line-height: 1.6; margin-bottom: 14px;">
+                Rather than relying on simple equal-weight averaging, the ensemble leverages <b>validation-optimized soft voting</b>. Non-negative weights summing to 1.0 were computed to minimize root mean squared error on the held-out validation partition:
+            </p>
+            <div style="background: #f1f5f2; border-radius: 10px; padding: 16px; font-family: monospace; font-size: 13px; line-height: 1.5; margin-bottom: 14px;">
+                Ensemble Prediction = 0.5464 &times; CatBoost + 0.2766 &times; LightGBM + 0.1770 &times; XGBoost + 0.0 &times; (RF, ET, GB)
+            </div>
+            <p style="font-size: 13.5px; color: var(--muted);">
+                This optimal weighting effectively leverages CatBoost and LightGBM's superior handling of numerical features while suppressing weaker learners, outperforming all single models on the unseen test set (R² = 0.8173).
+            </p>
+        </div>
+
+        <div class="panel" style="border-left: 4px solid #d97706;">
+            <h2 style="font-size: 19px; font-weight: 750; margin-bottom: 12px; color: #b45309;">5. Engineering Limitations & Scope</h2>
+            <p style="font-size: 14px; color: #354238; line-height: 1.6; margin-bottom: 10px;">
+                While the model demonstrates high empirical accuracy, users should keep in mind the following practical boundaries:
+            </p>
+            <ol style="font-size: 13.5px; color: #354238; line-height: 1.6; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+                <li><b>Domain Extrapolation:</b> Predictions for surface areas exceeding 3,500 m²/g or temperatures above 150 °C extrapolate beyond the domain of the training dataset.</li>
+                <li><b>Moisture & Competitive Sorption:</b> The models assume pure CO₂ gas adsorption and do not currently model multi-component flue gas competitive adsorption (e.g. H₂O vapor or N₂).</li>
+                <li><b>Kinetic Limitations:</b> Predictions represent static thermodynamic equilibrium capacity (mmol/g) and do not model dynamic breakthrough curves or mass-transfer kinetics.</li>
+            </ol>
+        </div>
+    </main>
+
+    <footer>
+        CO₂ Adsorption ML Project &bull; Biomass-Derived Porous Carbons &bull; Interpretable Ensemble Platform
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CO₂ Adsorption Predictor · Model Comparison</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <a href="index.html" class="brand">
+            <div class="logo">CO₂</div>
+            <div>
+                <b>CO₂ Adsorption Predictor</b>
+                <small>Biomass-Derived Porous Carbons &bull; Interpretable ML</small>
+            </div>
+        </a>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="prediction.html">Prediction</a></li>
+                <li><a href="models.html" class="active">Models</a></li>
+                <li><a href="explainability.html">Explainability</a></li>
+                <li><a href="what-if.html">What-If Analysis</a></li>
+                <li><a href="methodology.html">Methodology</a></li>
+            </ul>
+        </nav>
+        <div id="backend-status" class="nav-badge"><i></i> Checking System...</div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div>
+                <p class="eyebrow">BENCHMARKING & METRICS</p>
+                <h1>Model Comparison Dashboard</h1>
+                <p class="lead">Compare the evaluation results across all 6 tuned machine learning algorithms against the validation-optimized ensemble on the untouched test split.</p>
+            </div>
+        </section>
+
+        <!-- TABLE SECTION -->
+        <div class="grid-2">
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Test Set Performance (Actual Results)</h2>
+                    <span class="badge-tag badge-best">Held-Out Test Set</span>
+                </div>
+                <p style="font-size: 13px; color: var(--muted); margin-bottom: 14px;">
+                    Evaluation metrics loaded directly from <code>results/final_test_results.csv</code>:
+                </p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Model Architecture</th>
+                                <th>MAE <small>(mmol/g)</small></th>
+                                <th>RMSE <small>(mmol/g)</small></th>
+                                <th>R² Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="models-table-body">
+                            <tr><td colspan="4" style="text-align:center; padding: 20px;">Loading evaluation metrics...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p style="font-size: 12px; color: var(--muted); margin-top: 14px;">
+                    * The <b>Validation-Optimized Weighted Ensemble</b> achieves the highest test coefficient of determination (R² = 0.8173) and the lowest root mean squared error (RMSE = 0.7064 mmol/g).
+                </p>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Ensemble Contribution Weights</h2>
+                    <span class="badge-tag">Soft Voting</span>
+                </div>
+                <p style="font-size: 13px; color: var(--muted); margin-bottom: 14px;">
+                    Weights selected via constrained optimization on the validation fold:
+                </p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Model Name</th>
+                                <th>Ensemble Weight</th>
+                                <th>Relative Share</th>
+                            </tr>
+                        </thead>
+                        <tbody id="weights-table-body">
+                            <tr><td colspan="3" style="text-align:center; padding: 20px;">Loading weights...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 24px;">
+                    <h3 style="font-size: 15px; font-weight: 750; margin-bottom: 12px;">R² Accuracy Comparison</h3>
+                    <div id="r2-bars">
+                        <!-- Populated by models.js -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- VISUAL EVALUATION FIGURES -->
+        <h2 style="font-size: 20px; font-weight: 750; margin-top: 30px; margin-bottom: 18px;">Empirical Diagnostic Visualizations</h2>
+        <div class="grid-3">
+            <div class="figure-card">
+                <h4>Actual vs. Predicted Uptake</h4>
+                <p>Ensemble predictions on the test set closely aligned with the 1:1 parity line.</p>
+                <img src="assets/images/final_test_actual_vs_predicted.png" alt="Actual vs Predicted Parity Plot">
+            </div>
+
+            <div class="figure-card">
+                <h4>Residual Distribution</h4>
+                <p>Prediction errors centered symmetrically around zero with no heteroscedastic bias.</p>
+                <img src="assets/images/final_test_residuals.png" alt="Test Residuals Plot">
+            </div>
+
+            <div class="figure-card">
+                <h4>Ensemble RMSE Benchmark</h4>
+                <p>Comparison of single models vs. different ensembling strategies.</p>
+                <img src="assets/images/ensemble_rmse_comparison.png" alt="Ensemble RMSE Comparison">
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        CO₂ Adsorption ML Project &bull; Biomass-Derived Porous Carbons &bull; Interpretable Ensemble Platform
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/models.js"></script>
+</body>
+</html>

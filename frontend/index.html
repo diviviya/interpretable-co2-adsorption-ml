@@ -1,62 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>CO₂ Adsorption Predictor</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CO₂ Adsorption Predictor · Home</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<header class="topbar">
-  <div class="brand"><div class="logo">CO₂</div><div><b>CO₂ Adsorption Predictor</b><small>Biomass-derived porous carbon · ML workspace</small></div></div>
-  <div class="status"><i></i> Prediction interface</div>
-</header>
+    <header class="topbar">
+        <a href="index.html" class="brand">
+            <div class="logo">CO₂</div>
+            <div>
+                <b>CO₂ Adsorption Predictor</b>
+                <small>Biomass-Derived Porous Carbons &bull; Interpretable ML</small>
+            </div>
+        </a>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="prediction.html">Prediction</a></li>
+                <li><a href="models.html">Models</a></li>
+                <li><a href="explainability.html">Explainability</a></li>
+                <li><a href="what-if.html">What-If Analysis</a></li>
+                <li><a href="methodology.html">Methodology</a></li>
+            </ul>
+        </nav>
+        <div id="backend-status" class="nav-badge"><i></i> Checking System...</div>
+    </header>
 
-<main>
-<section class="hero">
-  <div>
-    <p class="eyebrow">PREDICTION WORKSPACE</p>
-    <h1>Predict CO₂ uptake from material properties.</h1>
-    <p>Enter the 10 experimental features used by the project model. The target is CO₂ uptake in mmol/g.</p>
-  </div>
-  <div class="target-card"><small>TARGET</small><strong>CO₂ uptake</strong><span>mmol/g</span></div>
-</section>
+    <main>
+        <section class="hero">
+            <div>
+                <p class="eyebrow">RESEARCH PLATFORM</p>
+                <h1>Interpretable Ensemble Learning for CO₂ Adsorption</h1>
+                <p class="lead">
+                    Accurately predict CO₂ uptake on biomass-derived porous carbon materials using an ensemble of 6 tuned machine learning models, backed by rigorous game-theoretic SHAP explainability.
+                </p>
+            </div>
+            <div>
+                <a href="prediction.html" class="feature-card" style="border-color: var(--green); background: #ffffff;">
+                    <span class="card-num" style="font-size: 28px;">0.817</span>
+                    <h3>Test R² Accuracy</h3>
+                    <p>Validation-optimized weighted ensemble evaluated on untouched test split.</p>
+                    <span class="card-link">Launch Predictor &rarr;</span>
+                </a>
+            </div>
+        </section>
 
-<div class="grid">
-<section class="panel">
-  <div class="heading"><div><p class="eyebrow">INPUT FEATURES</p><h2>Material & adsorption conditions</h2></div><button id="example" class="light">Load example</button></div>
-  <form id="form">
-    <div class="fields">
-      <label>Surface Area <small>m²/g</small><input name="surface_area" type="number" step="any" placeholder="e.g. 1420" required></label>
-      <label>Total Pore Volume <small>cm³/g</small><input name="total_pore_volume" type="number" step="any" placeholder="e.g. 0.74" required></label>
-      <label>Micropore Volume <small>cm³/g</small><input name="micropore_volume" type="number" step="any" placeholder="e.g. 0.48" required></label>
-      <label>Carbon <small>C %</small><input name="carbon_pct" type="number" step="any" placeholder="e.g. 78.9" required></label>
-      <label>Hydrogen <small>H %</small><input name="hydrogen_pct" type="number" step="any" placeholder="e.g. 1.5" required></label>
-      <label>Nitrogen <small>N %</small><input name="nitrogen_pct" type="number" step="any" placeholder="e.g. 2.26" required></label>
-      <label>Oxygen <small>O %</small><input name="oxygen_pct" type="number" step="any" placeholder="e.g. 15.05" required></label>
-      <label>Sulfur <small>S %</small><input name="sulfur_pct" type="number" step="any" placeholder="e.g. 0" required></label>
-      <label>Temperature <small>°C</small><input name="temperature_c" type="number" step="any" placeholder="e.g. 25" required></label>
-      <label>Pressure <small>bar</small><input name="pressure_bar" type="number" step="any" placeholder="e.g. 1" required></label>
-    </div>
-    <div class="actions"><button type="button" id="clear" class="light">Clear</button><button class="primary" id="predict">Predict CO₂ uptake <b>→</b></button></div>
-  </form>
-</section>
+        <div class="grid-2">
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>About the Prediction System</h2>
+                    <span class="badge-tag badge-best">ML Workspace</span>
+                </div>
+                <p style="font-size: 14.5px; color: #354238; margin-bottom: 16px;">
+                    Porous carbons derived from agricultural and industrial biomass wastes offer a sustainable, cost-effective pathway for carbon capture and storage (CCS). However, experimental synthesis and high-pressure gas sorption testing are labor-intensive and resource-heavy.
+                </p>
+                <p style="font-size: 14.5px; color: #354238; margin-bottom: 20px;">
+                    This platform leverages a curated dataset of <b>527 experimental observations</b> characterized by 10 physical, textural, elemental, and operating features. It bridges the gap between black-box accuracy and physical chemical interpretability.
+                </p>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <a href="prediction.html" style="text-decoration: none;"><button class="primary">Start Predicting &rarr;</button></a>
+                    <a href="models.html" style="text-decoration: none;"><button class="light">View Model Comparison</button></a>
+                </div>
+            </section>
 
-<aside class="panel result">
-  <div class="heading"><div><p class="eyebrow">PREDICTION</p><h2>Model output</h2></div><span class="badge">ML MODEL</span></div>
-  <div id="result" class="resultbox"><div><div class="icon">↗</div><h3>Your prediction will appear here</h3><p>Fill the features and click the prediction button.</p></div></div>
-  <div class="meta"><div><small>Target</small><b>CO₂ uptake</b></div><div><small>Unit</small><b>mmol/g</b></div></div>
-  <div class="notice"><b>Prototype</b><br>This UI is ready to connect to your FastAPI model endpoint. The current demo output is not a trained-model prediction.</div>
-</aside>
-</div>
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Core Pipeline Pillars</h2>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <span style="font-weight: 800; color: var(--green); font-size: 16px;">01</span>
+                        <div>
+                            <b style="font-size: 13.5px;">6 Tuned Tree Architectures</b>
+                            <p style="font-size: 12.5px; color: var(--muted);">Random Forest, Extra Trees, Gradient Boosting, XGBoost, LightGBM, and CatBoost tuned via Optuna.</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <span style="font-weight: 800; color: var(--green); font-size: 16px;">02</span>
+                        <div>
+                            <b style="font-size: 13.5px;">Optimal Weighted Ensembling</b>
+                            <p style="font-size: 12.5px; color: var(--muted);">Validation set optimization yielding the highest generalization capacity and lowest MAE (0.522 mmol/g).</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <span style="font-weight: 800; color: var(--green); font-size: 16px;">03</span>
+                        <div>
+                            <b style="font-size: 13.5px;">Game-Theoretic SHAP Interpretability</b>
+                            <p style="font-size: 12.5px; color: var(--muted);">Exact marginal feature attributions reveal how each pore property and operating condition impacts uptake.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
 
-<section class="cards">
-  <article><em>01</em><h3>Material properties</h3><p>Surface area, pore volumes and elemental composition describe the porous carbon.</p></article>
-  <article><em>02</em><h3>Adsorption conditions</h3><p>Temperature and pressure describe the experimental adsorption conditions.</p></article>
-  <article><em>03</em><h3>Interpretability</h3><p>SHAP explanations can be added once the final trained model is connected.</p></article>
-</section>
-</main>
-<footer>CO₂ Adsorption ML Project · Biomass waste-derived porous carbons</footer>
-<script src="script.js"></script>
+        <h2 style="font-size: 22px; font-weight: 750; margin-top: 25px; margin-bottom: 6px;">Platform Exploration</h2>
+        <p style="font-size: 14px; color: var(--muted);">Select a module below to inspect models, perform predictions, or test scenario variations.</p>
+
+        <div class="grid-cards">
+            <a href="prediction.html" class="feature-card">
+                <div class="card-num">01</div>
+                <h3>CO₂ Uptake Prediction</h3>
+                <p>Input 10 material and process conditions to receive real-time CO₂ uptake forecasts and SHAP feature attributions.</p>
+                <span class="card-link">Open Predictor &rarr;</span>
+            </a>
+
+            <a href="models.html" class="feature-card">
+                <div class="card-num">02</div>
+                <h3>Model Comparison</h3>
+                <p>Inspect authentic test evaluation results (MAE, RMSE, R²) and ensemble weights across all 6 model pipelines.</p>
+                <span class="card-link">View Benchmarks &rarr;</span>
+            </a>
+
+            <a href="explainability.html" class="feature-card">
+                <div class="card-num">03</div>
+                <h3>Model Explainability</h3>
+                <p>Global SHAP summary distributions, Partial Dependence Plots (PDP), and Accumulated Local Effects (ALE).</p>
+                <span class="card-link">Explore Interpretability &rarr;</span>
+            </a>
+
+            <a href="what-if.html" class="feature-card">
+                <div class="card-num">04</div>
+                <h3>What-If Scenario Analysis</h3>
+                <p>Simulate variations in synthesis parameters or conditions and evaluate baseline vs. modified uptake side-by-side.</p>
+                <span class="card-link">Launch What-If &rarr;</span>
+            </a>
+
+            <a href="methodology.html" class="feature-card">
+                <div class="card-num">05</div>
+                <h3>Methodology & Data</h3>
+                <p>Detailed documentation of data preprocessing, cross-validation splits, hyperparameters, and engineering limitations.</p>
+                <span class="card-link">Read Methodology &rarr;</span>
+            </a>
+        </div>
+    </main>
+
+    <footer>
+        CO₂ Adsorption ML Project &bull; Biomass-Derived Porous Carbons &bull; Interpretable Ensemble Platform
+    </footer>
+
+    <script src="js/main.js"></script>
 </body>
 </html>

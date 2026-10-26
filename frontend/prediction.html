@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CO₂ Adsorption Predictor · Prediction</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <a href="index.html" class="brand">
+            <div class="logo">CO₂</div>
+            <div>
+                <b>CO₂ Adsorption Predictor</b>
+                <small>Biomass-Derived Porous Carbons &bull; Interpretable ML</small>
+            </div>
+        </a>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="prediction.html" class="active">Prediction</a></li>
+                <li><a href="models.html">Models</a></li>
+                <li><a href="explainability.html">Explainability</a></li>
+                <li><a href="what-if.html">What-If Analysis</a></li>
+                <li><a href="methodology.html">Methodology</a></li>
+            </ul>
+        </nav>
+        <div id="backend-status" class="nav-badge"><i></i> Checking System...</div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div>
+                <p class="eyebrow">PREDICTION WORKSPACE</p>
+                <h1>Predict CO₂ Uptake</h1>
+                <p class="lead">Enter the 10 experimental material properties and sorption conditions to predict CO₂ uptake in mmol/g using the weighted ensemble.</p>
+            </div>
+            <div class="panel" style="padding: 14px 22px; margin-bottom: 0;">
+                <span class="eyebrow">TARGET VARIABLE</span>
+                <div style="font-size: 20px; font-weight: 800; color: var(--green);">CO₂ Uptake <small style="font-size: 13px; color: var(--muted); font-weight: 600;">(mmol/g)</small></div>
+            </div>
+        </section>
+
+        <div class="grid-2">
+            
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Material & Process Inputs</h2>
+                        <p style="font-size: 12px; color: var(--muted); margin-top: 2px;">All 10 features are processed by median imputation pipelines before inference.</p>
+                    </div>
+                    <button type="button" id="btn-example" class="light" style="height: 34px; padding: 0 12px; font-size: 12px;">Load Example</button>
+                </div>
+
+                <form id="prediction-form">
+                    <div class="fields-grid">
+                        <label>
+                            Surface Area <small>m²/g</small>
+                            <input name="surface_area" type="number" step="any" placeholder="e.g. 1420" required>
+                        </label>
+                        <label>
+                            Total Pore Volume <small>cm³/g</small>
+                            <input name="total_pore_volume" type="number" step="any" placeholder="e.g. 0.74" required>
+                        </label>
+                        <label>
+                            Micropore Volume <small>cm³/g</small>
+                            <input name="micropore_volume" type="number" step="any" placeholder="e.g. 0.48" required>
+                        </label>
+                        <label>
+                            Carbon <small>C (%)</small>
+                            <input name="carbon_pct" type="number" step="any" placeholder="e.g. 78.85" required>
+                        </label>
+                        <label>
+                            Hydrogen <small>H (%)</small>
+                            <input name="hydrogen_pct" type="number" step="any" placeholder="e.g. 1.50" required>
+                        </label>
+                        <label>
+                            Nitrogen <small>N (%)</small>
+                            <input name="nitrogen_pct" type="number" step="any" placeholder="e.g. 2.26" required>
+                        </label>
+                        <label>
+                            Oxygen <small>O (%)</small>
+                            <input name="oxygen_pct" type="number" step="any" placeholder="e.g. 15.05" required>
+                        </label>
+                        <label>
+                            Sulfur <small>S (%)</small>
+                            <input name="sulfur_pct" type="number" step="any" placeholder="e.g. 0.0" required>
+                        </label>
+                        <label>
+                            Temperature <small>°C</small>
+                            <input name="temperature_c" type="number" step="any" placeholder="e.g. 25" required>
+                        </label>
+                        <label>
+                            Pressure <small>bar</small>
+                            <input name="pressure_bar" type="number" step="any" placeholder="e.g. 1.0" required>
+                        </label>
+                    </div>
+
+                    <div class="actions">
+                        <button type="button" id="btn-clear" class="light">Clear</button>
+                        <button type="submit" id="btn-predict" class="primary">Predict CO₂ Uptake &rarr;</button>
+                    </div>
+                </form>
+            </section>
+
+            
+            <aside class="panel">
+                <div class="panel-header">
+                    <h2>Prediction & SHAP Output</h2>
+                    
+                </div>
+
+                <div id="prediction-result" class="resultbox">
+                    <div style="text-align: center; color: var(--muted); padding: 40px 20px;">
+                        <div style="font-size: 32px; margin-bottom: 10px;">↗</div>
+                        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">Your prediction will appear here</h3>
+                        <p style="font-size: 13px;">Fill in the material properties and adsorption conditions, then click Predict.</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; font-size: 12px; color: var(--muted); line-height: 1.5;">
+                    <b>Scientific Note:</b> The predicted uptake represents equilibrium capacity at the specified temperature and pressure. Marginal SHAP bars explain individual feature attributions relative to the baseline expectation.
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <footer>
+        CO₂ Adsorption ML Project &bull; Biomass-Derived Porous Carbons &bull; Interpretable Ensemble Platform
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/prediction.js"></script>
+</body>
+</html>
