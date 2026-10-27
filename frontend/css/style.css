@@ -638,3 +638,49 @@ footer {
     .compare-container { grid-template-columns: 1fr; }
     .nav-links { display: none; }
 }
+
+/* --------------------------------------------------------------------------
+   PREDICTION & WHAT-IF TABS
+   -------------------------------------------------------------------------- */
+.tab-nav {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid var(--line);
+    margin-bottom: 25px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--muted);
+    padding: 12px 20px;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-btn:hover {
+    color: var(--green);
+    background: var(--soft);
+}
+
+.tab-btn.active {
+    color: var(--green);
+    border-bottom: 3px solid var(--green);
+    background: #ffffff;
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}

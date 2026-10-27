@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CO₂ Adsorption Predictor · Prediction</title>
+    <title>CO₂ Adsorption Predictor · Prediction & What-If</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -18,10 +18,9 @@
         <nav>
             <ul class="nav-links">
                 <li><a href="index.html">Home</a></li>
-                <li><a href="prediction.html" class="active">Prediction</a></li>
+                <li><a href="prediction.html" class="active">Prediction & What-If</a></li>
                 <li><a href="models.html">Models</a></li>
                 <li><a href="explainability.html">Explainability</a></li>
-                <li><a href="what-if.html">What-If Analysis</a></li>
                 <li><a href="methodology.html">Methodology</a></li>
             </ul>
         </nav>
@@ -31,9 +30,9 @@
     <main>
         <section class="hero">
             <div>
-                <p class="eyebrow">PREDICTION WORKSPACE</p>
-                <h1>Predict CO₂ Uptake</h1>
-                <p class="lead">Enter the 10 experimental material properties and sorption conditions to predict CO₂ uptake in mmol/g using the weighted ensemble.</p>
+                <p class="eyebrow">PREDICTION & SCENARIO WORKSPACE</p>
+                <h1>CO₂ Uptake & What-If Analysis</h1>
+                <p class="lead">Forecast CO₂ adsorption capacity from 10 material properties, explore local SHAP attributions, or simulate what-if synthesis variations side-by-side.</p>
             </div>
             <div class="panel" style="padding: 14px 22px; margin-bottom: 0;">
                 <span class="eyebrow">TARGET VARIABLE</span>
@@ -41,87 +40,201 @@
             </div>
         </section>
 
-        <div class="grid-2">
-            
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <h2>Material & Process Inputs</h2>
-                        <p style="font-size: 12px; color: var(--muted); margin-top: 2px;">All 10 features are processed by median imputation pipelines before inference.</p>
-                    </div>
-                    <button type="button" id="btn-example" class="light" style="height: 34px; padding: 0 12px; font-size: 12px;">Load Example</button>
-                </div>
+        <!-- SUB-PAGE TABS -->
+        <div class="tab-nav">
+            <button type="button" class="tab-btn active" id="tab-btn-single">
+                <span>⚡</span> Single Prediction & SHAP
+            </button>
+            <button type="button" class="tab-btn" id="tab-btn-whatif">
+                <span>🔄</span> What-If Scenario Analysis
+            </button>
+        </div>
 
-                <form id="prediction-form">
-                    <div class="fields-grid">
-                        <label>
-                            Surface Area <small>m²/g</small>
-                            <input name="surface_area" type="number" step="any" placeholder="e.g. 1420" required>
-                        </label>
-                        <label>
-                            Total Pore Volume <small>cm³/g</small>
-                            <input name="total_pore_volume" type="number" step="any" placeholder="e.g. 0.74" required>
-                        </label>
-                        <label>
-                            Micropore Volume <small>cm³/g</small>
-                            <input name="micropore_volume" type="number" step="any" placeholder="e.g. 0.48" required>
-                        </label>
-                        <label>
-                            Carbon <small>C (%)</small>
-                            <input name="carbon_pct" type="number" step="any" placeholder="e.g. 78.85" required>
-                        </label>
-                        <label>
-                            Hydrogen <small>H (%)</small>
-                            <input name="hydrogen_pct" type="number" step="any" placeholder="e.g. 1.50" required>
-                        </label>
-                        <label>
-                            Nitrogen <small>N (%)</small>
-                            <input name="nitrogen_pct" type="number" step="any" placeholder="e.g. 2.26" required>
-                        </label>
-                        <label>
-                            Oxygen <small>O (%)</small>
-                            <input name="oxygen_pct" type="number" step="any" placeholder="e.g. 15.05" required>
-                        </label>
-                        <label>
-                            Sulfur <small>S (%)</small>
-                            <input name="sulfur_pct" type="number" step="any" placeholder="e.g. 0.0" required>
-                        </label>
-                        <label>
-                            Temperature <small>°C</small>
-                            <input name="temperature_c" type="number" step="any" placeholder="e.g. 25" required>
-                        </label>
-                        <label>
-                            Pressure <small>bar</small>
-                            <input name="pressure_bar" type="number" step="any" placeholder="e.g. 1.0" required>
-                        </label>
+        <!-- ===================================================================
+             TAB 1: SINGLE PREDICTION WORKSPACE
+             =================================================================== -->
+        <div class="tab-pane active" id="pane-single">
+            <div class="grid-2">
+                <!-- INPUT FORM -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Material & Process Inputs</h2>
+                            <p style="font-size: 12px; color: var(--muted); margin-top: 2px;">All 10 features are processed by median imputation pipelines before inference.</p>
+                        </div>
+                        <button type="button" id="btn-example" class="light" style="height: 34px; padding: 0 12px; font-size: 12px;">Load Example</button>
                     </div>
 
-                    <div class="actions">
-                        <button type="button" id="btn-clear" class="light">Clear</button>
-                        <button type="submit" id="btn-predict" class="primary">Predict CO₂ Uptake &rarr;</button>
+                    <form id="prediction-form">
+                        <div class="fields-grid">
+                            <label>
+                                Surface Area <small>m²/g</small>
+                                <input name="surface_area" type="number" step="any" placeholder="e.g. 1420" required>
+                            </label>
+                            <label>
+                                Total Pore Volume <small>cm³/g</small>
+                                <input name="total_pore_volume" type="number" step="any" placeholder="e.g. 0.74" required>
+                            </label>
+                            <label>
+                                Micropore Volume <small>cm³/g</small>
+                                <input name="micropore_volume" type="number" step="any" placeholder="e.g. 0.48" required>
+                            </label>
+                            <label>
+                                Carbon <small>C (%)</small>
+                                <input name="carbon_pct" type="number" step="any" placeholder="e.g. 78.85" required>
+                            </label>
+                            <label>
+                                Hydrogen <small>H (%)</small>
+                                <input name="hydrogen_pct" type="number" step="any" placeholder="e.g. 1.50" required>
+                            </label>
+                            <label>
+                                Nitrogen <small>N (%)</small>
+                                <input name="nitrogen_pct" type="number" step="any" placeholder="e.g. 2.26" required>
+                            </label>
+                            <label>
+                                Oxygen <small>O (%)</small>
+                                <input name="oxygen_pct" type="number" step="any" placeholder="e.g. 15.05" required>
+                            </label>
+                            <label>
+                                Sulfur <small>S (%)</small>
+                                <input name="sulfur_pct" type="number" step="any" placeholder="e.g. 0.0" required>
+                            </label>
+                            <label>
+                                Temperature <small>°C</small>
+                                <input name="temperature_c" type="number" step="any" placeholder="e.g. 25" required>
+                            </label>
+                            <label>
+                                Pressure <small>bar</small>
+                                <input name="pressure_bar" type="number" step="any" placeholder="e.g. 1.0" required>
+                            </label>
+                        </div>
+
+                        <div class="actions">
+                            <button type="button" id="btn-clear" class="light">Clear</button>
+                            <button type="submit" id="btn-predict" class="primary">Predict CO₂ Uptake &rarr;</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- PREDICTION OUTPUT -->
+                <aside class="panel">
+                    <div class="panel-header">
+                        <h2>Prediction & SHAP Output</h2>
+                        <span class="badge-tag badge-best">FastAPI Backend</span>
                     </div>
-                </form>
-            </section>
 
-            
-            <aside class="panel">
-                <div class="panel-header">
-                    <h2>Prediction & SHAP Output</h2>
-                    
+                    <div id="prediction-result" class="resultbox">
+                        <div style="text-align: center; color: var(--muted); padding: 40px 20px;">
+                            <div style="font-size: 32px; margin-bottom: 10px;">↗</div>
+                            <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">Your prediction will appear here</h3>
+                            <p style="font-size: 13px;">Fill in the material properties and adsorption conditions, then click Predict.</p>
+                        </div>
+                    </div>
+
+                    <div id="quick-whatif-cta" style="display: none; margin-top: 16px; text-align: center;">
+                        <button type="button" id="btn-send-to-whatif" class="light" style="width: 100%; border-color: var(--green); color: var(--green); font-weight: 750;">
+                            🔄 Send this material to What-If Scenario &rarr;
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 20px; font-size: 12px; color: var(--muted); line-height: 1.5;">
+                        <b>Scientific Note:</b> The predicted uptake represents equilibrium capacity at the specified temperature and pressure. Marginal SHAP bars explain individual feature attributions relative to the baseline expectation.
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- ===================================================================
+             TAB 2: WHAT-IF SCENARIO ANALYSIS WORKSPACE
+             =================================================================== -->
+        <div class="tab-pane" id="pane-whatif">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
+                <p style="font-size: 14px; color: var(--muted); max-width: 650px;">
+                    Modify one or more synthesis parameters or conditions on the right side to simulate the impact on CO₂ adsorption capacity.
+                </p>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" id="btn-copy-from-pred" class="light" style="font-size: 12.5px;">Copy from Prediction Form</button>
+                    <button type="button" id="btn-preset-highp" class="light" style="font-size: 12.5px;">Preset: High Pressure (2.5 bar)</button>
                 </div>
+            </div>
 
-                <div id="prediction-result" class="resultbox">
-                    <div style="text-align: center; color: var(--muted); padding: 40px 20px;">
-                        <div style="font-size: 32px; margin-bottom: 10px;">↗</div>
-                        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">Your prediction will appear here</h3>
-                        <p style="font-size: 13px;">Fill in the material properties and adsorption conditions, then click Predict.</p>
+            <!-- WHAT-IF RESULT CARD -->
+            <div id="whatif-result">
+                <div class="what-if-summary">
+                    <div class="what-if-box">
+                        <small>Baseline Prediction</small>
+                        <strong id="wi-base-val">3.056</strong>
+                        <span style="font-size: 13px; color: var(--muted); margin-left: 4px;">mmol/g</span>
+                    </div>
+                    <div style="font-size: 24px; color: var(--muted);">➔</div>
+                    <div class="what-if-box">
+                        <small>Modified Prediction</small>
+                        <strong id="wi-mod-val">4.708</strong>
+                        <span style="font-size: 13px; color: var(--muted); margin-left: 4px;">mmol/g</span>
+                    </div>
+                    <div class="what-if-box">
+                        <small>Difference (Delta)</small>
+                        <div id="wi-delta-badge" class="what-if-delta delta-pos">
+                            +1.652 mmol/g (+54.1%)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WHAT-IF COMPARISON FORM -->
+            <form id="whatif-form">
+                <div class="compare-container">
+                    <!-- BASELINE PANEL -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>1. Baseline Material Spec</h2>
+                            <span class="badge-tag">Reference</span>
+                        </div>
+                        <div class="fields-grid" style="grid-template-columns: 1fr 1fr;">
+                            <label>Surface Area (m²/g)<input id="base_surface_area" type="number" step="any" required></label>
+                            <label>Total Pore Vol (cm³/g)<input id="base_total_pore_volume" type="number" step="any" required></label>
+                            <label>Micropore Vol (cm³/g)<input id="base_micropore_volume" type="number" step="any" required></label>
+                            <label>Carbon C (%)<input id="base_carbon_pct" type="number" step="any" required></label>
+                            <label>Hydrogen H (%)<input id="base_hydrogen_pct" type="number" step="any" required></label>
+                            <label>Nitrogen N (%)<input id="base_nitrogen_pct" type="number" step="any" required></label>
+                            <label>Oxygen O (%)<input id="base_oxygen_pct" type="number" step="any" required></label>
+                            <label>Sulfur S (%)<input id="base_sulfur_pct" type="number" step="any" required></label>
+                            <label>Temperature (°C)<input id="base_temperature_c" type="number" step="any" required></label>
+                            <label>Pressure (bar)<input id="base_pressure_bar" type="number" step="any" required></label>
+                        </div>
+                    </div>
+
+                    <!-- MODIFIED PANEL -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>2. Modified / Target Spec</h2>
+                            <span class="badge-tag badge-best">Experimental Variation</span>
+                        </div>
+                        <div class="fields-grid" style="grid-template-columns: 1fr 1fr;">
+                            <label>Surface Area (m²/g)<input id="mod_surface_area" type="number" step="any" required></label>
+                            <label>Total Pore Vol (cm³/g)<input id="mod_total_pore_volume" type="number" step="any" required></label>
+                            <label>Micropore Vol (cm³/g)<input id="mod_micropore_volume" type="number" step="any" required></label>
+                            <label>Carbon C (%)<input id="mod_carbon_pct" type="number" step="any" required></label>
+                            <label>Hydrogen H (%)<input id="mod_hydrogen_pct" type="number" step="any" required></label>
+                            <label>Nitrogen N (%)<input id="mod_nitrogen_pct" type="number" step="any" required></label>
+                            <label>Oxygen O (%)<input id="mod_oxygen_pct" type="number" step="any" required></label>
+                            <label>Sulfur S (%)<input id="mod_sulfur_pct" type="number" step="any" required></label>
+                            <label>Temperature (°C)<input id="mod_temperature_c" type="number" step="any" required></label>
+                            <label>Pressure (bar)<input id="mod_pressure_bar" type="number" step="any" required></label>
+                        </div>
                     </div>
                 </div>
 
-                <div style="margin-top: 20px; font-size: 12px; color: var(--muted); line-height: 1.5;">
-                    <b>Scientific Note:</b> The predicted uptake represents equilibrium capacity at the specified temperature and pressure. Marginal SHAP bars explain individual feature attributions relative to the baseline expectation.
+                <div style="text-align: right; margin-bottom: 25px;">
+                    <button type="submit" id="btn-whatif" class="primary" style="height: 46px; font-size: 15px; padding: 0 28px;">
+                        Run What-If Comparison &rarr;
+                    </button>
                 </div>
-            </aside>
+            </form>
+
+            <div id="whatif-details-panel">
+                <!-- Changed parameters breakdown populated dynamically -->
+            </div>
         </div>
     </main>
 
