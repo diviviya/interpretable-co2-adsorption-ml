@@ -1,0 +1,61 @@
+{
+  "candidate_directory": "/Users/divyakandlakuti/Desktop/interpretable-co2-adsorption-ml/artifacts/candidates/20261028T094742Z_ensemble",
+  "target_column": "CO2 uptake (mmol/g)",
+  "prediction_unit": "mmol/g",
+  "explained_split": "validation",
+  "explained_rows": 84,
+  "background_split": "train",
+  "background_rows": 100,
+  "model_order": [
+    "Random Forest",
+    "Extra Trees",
+    "Gradient Boosting",
+    "XGBoost",
+    "LightGBM",
+    "CatBoost"
+  ],
+  "ensemble_weights": {
+    "Random Forest": 2.4620441927086902e-18,
+    "Extra Trees": 3.0923328966184142e-18,
+    "Gradient Boosting": 4.068114851855368e-18,
+    "XGBoost": 0.09456358094464602,
+    "LightGBM": 0.40591666278510136,
+    "CatBoost": 0.4995197562702527
+  },
+  "ensemble_expected_value": 3.4880994124973426,
+  "max_absolute_ensemble_additivity_error": 2.1448784703892443e-07,
+  "per_model_checks": {
+    "Random Forest": {
+      "weight": 2.4620441927086902e-18,
+      "expected_value": 3.480161775117244,
+      "max_absolute_additivity_error": 3.108624468950438e-14
+    },
+    "Extra Trees": {
+      "weight": 3.0923328966184142e-18,
+      "expected_value": 3.488764204545454,
+      "max_absolute_additivity_error": 2.2537527399890678e-14
+    },
+    "Gradient Boosting": {
+      "weight": 4.068114851855368e-18,
+      "expected_value": 3.475974206733038,
+      "max_absolute_additivity_error": 1.1546319456101628e-14
+    },
+    "XGBoost": {
+      "weight": 0.09456358094464602,
+      "expected_value": 3.481821298599243,
+      "max_absolute_additivity_error": 2.384185791015625e-06
+    },
+    "LightGBM": {
+      "weight": 0.40591666278510136,
+      "expected_value": 3.488764114961143,
+      "max_absolute_additivity_error": 1.0658141036401503e-14
+    },
+    "CatBoost": {
+      "weight": 0.4995197562702527,
+      "expected_value": 3.4887477694879645,
+      "max_absolute_additivity_error": 5.329070518200751e-15
+    }
+  },
+  "shap_method": "Weighted sum of model-specific TreeSHAP values using tree_path_dependent explanations. No explicit background dataset is passed to TreeExplainer.",
+  "note": "These are ensemble-level explanations for the saved candidate. The original test set was not used for SHAP background selection."
+}

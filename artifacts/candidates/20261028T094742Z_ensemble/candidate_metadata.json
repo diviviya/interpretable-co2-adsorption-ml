@@ -1,0 +1,162 @@
+{
+  "run_id": "20261028T094742Z",
+  "created_at_utc": "2026-10-28T09:47:42.228625+00:00",
+  "status": "ensemble_candidate",
+  "activated": false,
+  "target_column": "CO2 uptake (mmol/g)",
+  "feature_columns": [
+    "Surface Area (m2/g)",
+    "Total Pore Volume(cm3/g)",
+    "Micropore Volume (cm3/g)",
+    "C (%)",
+    "H (%)",
+    "N (%)",
+    "O (%)",
+    "S (%)",
+    "Temp (\u00b0C)",
+    "Pressure (bar)"
+  ],
+  "train_rows": 336,
+  "validation_rows": 84,
+  "test_rows_reserved": 106,
+  "test_set_evaluated": false,
+  "selected_strategy": "optimized_nonnegative_weights",
+  "selected_weights": {
+    "Random Forest": 2.4620441927086902e-18,
+    "Extra Trees": 3.0923328966184142e-18,
+    "Gradient Boosting": 4.068114851855368e-18,
+    "XGBoost": 0.09456358094464602,
+    "LightGBM": 0.40591666278510136,
+    "CatBoost": 0.4995197562702527
+  },
+  "selected_validation_metrics": {
+    "MAE": 0.3613459169658142,
+    "RMSE": 0.5785613125781887,
+    "R2": 0.8523787284968397
+  },
+  "comparison": {
+    "baseline_candidate": "artifacts/candidates/20261028T093740Z",
+    "tuned_candidate": "artifacts/candidates/20261028T094137Z_tuned",
+    "individual_models": [
+      {
+        "model": "Random Forest",
+        "baseline_validation": {
+          "MAE": 0.4550282196969697,
+          "RMSE": 0.6781976058596298,
+          "R2": 0.7971557660959793
+        },
+        "tuned_validation": {
+          "MAE": 0.4497060115548581,
+          "RMSE": 0.669504043040864,
+          "R2": 0.8023228048465892
+        }
+      },
+      {
+        "model": "Extra Trees",
+        "baseline_validation": {
+          "MAE": 0.4237812770562775,
+          "RMSE": 0.6582072112477119,
+          "R2": 0.8089375095508913
+        },
+        "tuned_validation": {
+          "MAE": 0.4549183407131885,
+          "RMSE": 0.6724677274988308,
+          "R2": 0.8005688213405587
+        }
+      },
+      {
+        "model": "Gradient Boosting",
+        "baseline_validation": {
+          "MAE": 0.45644431777113353,
+          "RMSE": 0.689422915383793,
+          "R2": 0.7903853697107116
+        },
+        "tuned_validation": {
+          "MAE": 0.41308143630061267,
+          "RMSE": 0.6532844684958657,
+          "R2": 0.8117847414676065
+        }
+      },
+      {
+        "model": "XGBoost",
+        "baseline_validation": {
+          "MAE": 0.4265479178436391,
+          "RMSE": 0.6679286959404438,
+          "R2": 0.8032519816734983
+        },
+        "tuned_validation": {
+          "MAE": 0.39626258262050096,
+          "RMSE": 0.6258564757441037,
+          "R2": 0.8272573161930401
+        }
+      },
+      {
+        "model": "LightGBM",
+        "baseline_validation": {
+          "MAE": 0.43041025841734104,
+          "RMSE": 0.6327625991365498,
+          "R2": 0.8234239632679363
+        },
+        "tuned_validation": {
+          "MAE": 0.37223553061882,
+          "RMSE": 0.599733808434157,
+          "R2": 0.8413766105065597
+        }
+      },
+      {
+        "model": "CatBoost",
+        "baseline_validation": {
+          "MAE": 0.3583332406665054,
+          "RMSE": 0.5804813758957658,
+          "R2": 0.8513972853552283
+        },
+        "tuned_validation": {
+          "MAE": 0.39688347432789456,
+          "RMSE": 0.593438290283306,
+          "R2": 0.8446893305228945
+        }
+      }
+    ],
+    "equal_weight_ensemble": {
+      "weights": {
+        "Random Forest": 0.16666666666666666,
+        "Extra Trees": 0.16666666666666666,
+        "Gradient Boosting": 0.16666666666666666,
+        "XGBoost": 0.16666666666666666,
+        "LightGBM": 0.16666666666666666,
+        "CatBoost": 0.16666666666666666
+      },
+      "MAE": 0.37981463364996015,
+      "RMSE": 0.6091455962124968,
+      "R2": 0.8363589038651207
+    },
+    "optimized_weight_ensemble": {
+      "weights": {
+        "Random Forest": 2.4620441927086902e-18,
+        "Extra Trees": 3.0923328966184142e-18,
+        "Gradient Boosting": 4.068114851855368e-18,
+        "XGBoost": 0.09456358094464602,
+        "LightGBM": 0.40591666278510136,
+        "CatBoost": 0.4995197562702527
+      },
+      "MAE": 0.3613459169658142,
+      "RMSE": 0.5785613125781887,
+      "R2": 0.8523787284968397
+    },
+    "selected_strategy": "optimized_nonnegative_weights",
+    "selected_weights": {
+      "Random Forest": 2.4620441927086902e-18,
+      "Extra Trees": 3.0923328966184142e-18,
+      "Gradient Boosting": 4.068114851855368e-18,
+      "XGBoost": 0.09456358094464602,
+      "LightGBM": 0.40591666278510136,
+      "CatBoost": 0.4995197562702527
+    },
+    "selected_validation_metrics": {
+      "MAE": 0.3613459169658142,
+      "RMSE": 0.5785613125781887,
+      "R2": 0.8523787284968397
+    }
+  },
+  "note": "Candidate only. Weights were selected using validation data. The original test set was not used. Independent test evaluation is required before any deployment decision."
+}

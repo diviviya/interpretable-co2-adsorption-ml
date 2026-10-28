@@ -1,0 +1,22 @@
+{
+  "candidate_directory": "artifacts/candidates/20261028T094742Z_ensemble",
+  "target_column": "CO2 uptake (mmol/g)",
+  "prediction_unit": "mmol/g",
+  "test_rows": 106,
+  "test_set_evaluated": true,
+  "ensemble_strategy": "optimized_nonnegative_weights",
+  "ensemble_weights": {
+    "Random Forest": 2.4620441927086902e-18,
+    "Extra Trees": 3.0923328966184142e-18,
+    "Gradient Boosting": 4.068114851855368e-18,
+    "XGBoost": 0.09456358094464602,
+    "LightGBM": 0.40591666278510136,
+    "CatBoost": 0.4995197562702527
+  },
+  "metrics": {
+    "MAE": 0.489638354750637,
+    "RMSE": 0.684040173725787,
+    "R2": 0.8286537599919848
+  },
+  "note": "Final evaluation of the selected candidate on the original held-out test split. Do not use these results to tune weights or select models."
+}
