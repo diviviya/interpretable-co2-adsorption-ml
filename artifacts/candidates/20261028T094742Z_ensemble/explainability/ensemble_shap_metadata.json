@@ -33,7 +33,7 @@
     "Extra Trees": {
       "weight": 3.0923328966184142e-18,
       "expected_value": 3.488764204545454,
-      "max_absolute_additivity_error": 2.2537527399890678e-14
+      "max_absolute_additivity_error": 2.2426505097428162e-14
     },
     "Gradient Boosting": {
       "weight": 4.068114851855368e-18,
