@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "username": "admin",
+    "role": "admin",
+    "password_hash": "f53b59e88023843a3eca422075dcb5f9c93f96844a18d3f2961e1557e5516e5c",
+    "salt": "39f64ff29b9fbb494fb24890db84918e",
+    "created_at": "2026-10-28T09:28:47.350283+00:00"
+  },
+  {
+    "id": 2,
+    "username": "researcher1",
+    "role": "user",
+    "password_hash": "cfa3ed8640fe49754919012520c958d255c37d21d97e8c6316f8e1f53a1df2d6",
+    "salt": "d53c40b723d504300f34abb0b6d0cb7e",
+    "created_at": "2026-10-28T09:29:06.028411+00:00"
+  }
+]

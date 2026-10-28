@@ -1,0 +1,14 @@
+[
+  {
+    "filename": "retrain_set.csv",
+    "saved_path": "C:\\Users\\reach\\GlassFormAI\\GlassFormAI\\backend\\storage\\datasets\\1793179748_retrain_set.csv",
+    "row_count": 25,
+    "feature_count": 10,
+    "target": "CO2 uptake (mmol/g)",
+    "target_mean": 2.282,
+    "target_std": 0.2348,
+    "uploaded_by": "admin",
+    "uploaded_at": "2026-10-28T09:29:08.164357+00:00",
+    "status": "approved"
+  }
+]

@@ -1,0 +1,13 @@
+[
+  {
+    "job_id": "job-e8936667",
+    "dataset_name": "retrain_set.csv",
+    "status": "running",
+    "progress_pct": 35,
+    "created_by": "admin",
+    "created_at": "2026-10-28T09:29:08.224097+00:00",
+    "completed_at": null,
+    "metrics": null,
+    "error": null
+  }
+]

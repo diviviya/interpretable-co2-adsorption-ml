@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1,
+    "username": "researcher1",
+    "inputs": {
+      "surface_area": 1420.0,
+      "total_pore_volume": 0.74,
+      "micropore_volume": 0.48,
+      "carbon": 78.855,
+      "hydrogen": 1.5,
+      "nitrogen": 2.26,
+      "oxygen": 15.05,
+      "sulfur": 0.0,
+      "temperature": 25.0,
+      "pressure": 1.0
+    },
+    "predicted_uptake": 3.4623,
+    "model_version": "v1.0-ensemble",
+    "timestamp": "2026-10-28T09:29:07.465078+00:00"
+  }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "username": "admin",
+    "action": "UPLOAD_DATASET",
+    "details": "Uploaded and approved dataset: retrain_set.csv (25 rows)",
+    "timestamp": "2026-10-28T09:29:08.190576+00:00"
+  },
+  {
+    "id": 2,
+    "username": "admin",
+    "action": "START_TRAINING",
+    "details": "Started training job job-e8936667 on dataset retrain_set.csv",
+    "timestamp": "2026-10-28T09:29:08.253543+00:00"
+  },
+  {
+    "id": 3,
+    "username": "admin",
+    "action": "ACTIVATE_MODEL",
+    "details": "Activated model v0.9-catboost-solo. Previous active: v1.0-ensemble",
+    "timestamp": "2026-10-28T09:29:10.378080+00:00"
+  },
+  {
+    "id": 4,
+    "username": "admin",
+    "action": "ROLLBACK_MODEL",
+    "details": "Rolled back from v0.9-catboost-solo to v1.0-ensemble",
+    "timestamp": "2026-10-28T09:29:10.462465+00:00"
+  }
+]

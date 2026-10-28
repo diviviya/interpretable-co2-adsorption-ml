@@ -1,0 +1,36 @@
+[
+  {
+    "version": "v1.0-ensemble",
+    "name": "Validation-Optimized Weighted Ensemble",
+    "status": "active",
+    "metrics": {
+      "R2": 0.8173,
+      "RMSE": 0.7064,
+      "MAE": 0.522
+    },
+    "weights": {
+      "CatBoost": 0.5464,
+      "LightGBM": 0.2766,
+      "XGBoost": 0.177
+    },
+    "created_at": "2026-10-21T20:35:48Z",
+    "activated_at": "2026-10-28T09:29:10.431351+00:00",
+    "activated_by": "admin"
+  },
+  {
+    "version": "v0.9-catboost-solo",
+    "name": "Tuned CatBoost Baseline",
+    "status": "archived",
+    "metrics": {
+      "R2": 0.8019,
+      "RMSE": 0.7355,
+      "MAE": 0.5445
+    },
+    "weights": {
+      "CatBoost": 1.0
+    },
+    "created_at": "2026-10-20T18:00:00Z",
+    "activated_at": "2026-10-28T09:29:10.348188+00:00",
+    "activated_by": "admin"
+  }
+]
