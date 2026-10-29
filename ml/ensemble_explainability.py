@@ -12,6 +12,7 @@ from ml.data_validation import (
     TARGET_COLUMN,
     validate_training_dataset,
 )
+from ml.predictor import CO2AdsorptionPredictor, MODEL_PATH
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SPLIT_FILE = PROJECT_ROOT / "artifacts" / "splits" / "split_assignments.csv"
@@ -48,10 +49,19 @@ def explain_ensemble(
     max_background_rows=100,
 ):
     candidate_directory = Path(candidate_directory)
-    bundle_path = candidate_directory / "co2_adsorption_ensemble.joblib"
+    candidate_bundle_path = candidate_directory / "co2_adsorption_ensemble.joblib"
 
-    if not bundle_path.exists():
-        raise FileNotFoundError(f"Candidate bundle not found: {bundle_path}")
+    # The default selected ensemble has a portable deployment bundle. Load it
+    # through the same restoration path used by prediction so XGBoost is read
+    # from its native JSON file rather than the old Joblib-serialized booster.
+    if candidate_directory.resolve() == DEFAULT_CANDIDATE.resolve():
+        if not MODEL_PATH.is_file():
+            raise FileNotFoundError(f"Portable deployment bundle not found: {MODEL_PATH}")
+        bundle = CO2AdsorptionPredictor(MODEL_PATH).bundle
+    else:
+        if not candidate_bundle_path.is_file():
+            raise FileNotFoundError(f"Candidate bundle not found: {candidate_bundle_path}")
+        bundle = joblib.load(candidate_bundle_path)
 
     if max_background_rows < 1:
         raise ValueError("max_background_rows must be positive.")
@@ -82,8 +92,6 @@ def explain_ensemble(
 
     if X_train.empty or X_val.empty:
         raise ValueError("Training and validation splits must be non-empty.")
-
-    bundle = joblib.load(bundle_path)
 
     if bundle["feature_columns"] != FEATURE_COLUMNS:
         raise ValueError("Candidate feature columns do not match the dataset.")
