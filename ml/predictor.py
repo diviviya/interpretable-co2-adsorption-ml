@@ -28,6 +28,10 @@ class _PortableXGBoostPipeline:
         self.imputer = imputer
         self.model = model
 
+    @property
+    def named_steps(self):
+        return {"imputer": self.imputer, "model": self.model}
+
     def predict(self, X):
         return self.model.predict(self.imputer.transform(X))
 
