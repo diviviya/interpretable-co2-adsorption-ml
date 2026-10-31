@@ -29,9 +29,9 @@ from backend.services.prediction_service import (
     predict_single,
     compute_shap,
     predict_batch_csv,
-    bundle,
     FEATURE_COLUMNS,
 )
+from ml.predictor import predictor, PredictionError
 from backend.services.training_service import (
     validate_and_save_dataset,
     start_training_job,
@@ -67,7 +67,7 @@ def health_check():
         "status": "healthy",
         "service": "CO2 Adsorption Prediction API",
         "active_model_version": active_model["version"] if active_model else "v1.0",
-        "model_strategy": bundle["ensemble_strategy"],
+        "model_strategy": "Validation-optimized weighted ensemble",
         "storage": "JSON Persistent Store (No SQL)",
         "features_count": len(FEATURE_COLUMNS),
     }
@@ -122,7 +122,7 @@ def predict_endpoint(
     request: FeatureInput,
     current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None
 ):
-    """Single sample prediction with real-time SHAP feature attribution."""
+    """Single sample prediction using the official CO2AdsorptionPredictor."""
     values = {
         "surface_area": request.surface_area,
         "total_pore_volume": request.total_pore_volume,
@@ -136,7 +136,14 @@ def predict_endpoint(
         "pressure": request.pressure,
     }
 
-    pred_val, input_df = predict_single(values)
+    try:
+        pred_res, input_df = predict_single(values)
+    except PredictionError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
+
+    pred_val = pred_res["prediction"]
     base_val, shap_list = compute_shap(input_df)
 
     active_model = JSONStorage.get_active_model_version()
@@ -147,9 +154,12 @@ def predict_endpoint(
     JSONStorage.record_prediction(username, values, pred_val, version_name)
 
     return {
+        "prediction": round(pred_val, 4),
         "predicted_co2_uptake_mmol_g": round(pred_val, 4),
-        "unit": "mmol/g",
-        "model": bundle["ensemble_strategy"],
+        "unit": pred_res.get("unit", "mmol/g"),
+        "individual_predictions": pred_res.get("individual_predictions", {}),
+        "ensemble_weights": pred_res.get("ensemble_weights", {}),
+        "model": "Validation-optimized weighted ensemble",
         "model_version": version_name,
         "base_value": base_val,
         "shap_contributions": shap_list,
@@ -222,8 +232,16 @@ def what_if_endpoint(request: WhatIfRequest):
         "pressure": request.modified.pressure,
     }
 
-    base_pred, df_base = predict_single(v_base)
-    mod_pred, df_mod = predict_single(v_mod)
+    try:
+        base_res, df_base = predict_single(v_base)
+        mod_res, df_mod = predict_single(v_mod)
+    except PredictionError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
+
+    base_pred = base_res["prediction"]
+    mod_pred = mod_res["prediction"]
 
     delta = mod_pred - base_pred
     pct_change = (delta / base_pred * 100.0) if abs(base_pred) > 1e-6 else 0.0
@@ -326,7 +344,7 @@ def models_endpoint():
     return {
         "evaluation_metrics": models_metrics,
         "ensemble_weights": weights_list,
-        "selected_model": bundle["ensemble_strategy"],
+        "selected_model": "Validation-optimized weighted ensemble",
         "features": FEATURE_COLUMNS,
     }
 

@@ -1,21 +1,18 @@
 """
 Prediction Service for Single and Batch CSV Predictions.
+Uses the official CO2AdsorptionPredictor from ml.predictor.
 """
 from pathlib import Path
 import io
 import pandas as pd
 import numpy as np
-import joblib
+
+from ml.predictor import predictor, PredictionError
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-MODEL_PATH = PROJECT_ROOT / "artifacts" / "deployment" / "co2_adsorption_ensemble.joblib"
+FEATURE_COLUMNS = predictor.feature_columns
 
-if not MODEL_PATH.exists():
-    raise FileNotFoundError(f"Active model bundle not found: {MODEL_PATH}")
-
-bundle = joblib.load(MODEL_PATH)
-FEATURE_COLUMNS = bundle["feature_columns"]
-
+# Map Pydantic request field names (snake_case) to exact model feature columns
 FEATURE_MAP = {
     "surface_area": "Surface Area (m2/g)",
     "total_pore_volume": "Total Pore Volume(cm3/g)",
@@ -29,23 +26,43 @@ FEATURE_MAP = {
     "pressure": "Pressure (bar)",
 }
 
-def predict_single(input_dict: dict) -> tuple[float, pd.DataFrame]:
-    input_data = {FEATURE_MAP[name]: input_dict.get(name) for name in FEATURE_MAP}
-    input_df = pd.DataFrame([input_data], columns=FEATURE_COLUMNS)
+def format_sample_dict(input_dict: dict) -> dict:
+    """Map flexible dictionary keys to the exact model feature names."""
+    sample = {}
+    for k, v in input_dict.items():
+        if k in FEATURE_COLUMNS:
+            sample[k] = v
+        elif k in FEATURE_MAP:
+            sample[FEATURE_MAP[k]] = v
+    # Ensure all feature columns are present (with None if absent for median imputation)
+    for col in FEATURE_COLUMNS:
+        if col not in sample:
+            sample[col] = None
+    return sample
 
-    predictions = []
-    for name in bundle["model_order"]:
-        pipeline = bundle["models"][name]
-        pred = pipeline.predict(input_df)
-        predictions.append(pred)
-
-    prediction_matrix = np.column_stack(predictions)
-    weights = np.array([bundle["ensemble_weights"][name] for name in bundle["model_order"]])
-    res = float((prediction_matrix @ weights)[0])
-    return res, input_df
+def predict_single(input_dict: dict) -> tuple[dict, pd.DataFrame]:
+    """
+    Run prediction through the official CO2AdsorptionPredictor.
+    Returns:
+        result: dict containing 'prediction', 'unit', 'individual_predictions', 'ensemble_weights'
+        input_df: DataFrame used for SHAP or feature inspection
+    """
+    sample = format_sample_dict(input_dict)
+    
+    # Run prediction using official predictor
+    result = predictor.predict(sample)
+    
+    # Create single-row DataFrame for SHAP explanation
+    input_df = pd.DataFrame([sample], columns=FEATURE_COLUMNS)
+    
+    return result, input_df
 
 def compute_shap(input_df: pd.DataFrame):
-    catboost_pipeline = bundle["models"].get("CatBoost")
+    """
+    Compute local Tree-SHAP explanations using the CatBoost model step.
+    Falls back gracefully if CatBoost or SHAP is unavailable.
+    """
+    catboost_pipeline = predictor.models.get("CatBoost")
     shap_contributions = []
     base_value = None
 
@@ -61,7 +78,8 @@ def compute_shap(input_df: pd.DataFrame):
             base_value = round(float(shap_raw[-1]), 3)
 
             for col_name, sv in zip(FEATURE_COLUMNS, shap_raw[:-1]):
-                val_float = float(input_df[col_name].iloc[0]) if pd.notnull(input_df[col_name].iloc[0]) else 0.0
+                val_raw = input_df[col_name].iloc[0]
+                val_float = float(val_raw) if pd.notnull(val_raw) else 0.0
                 sv_float = float(sv)
                 shap_contributions.append({
                     "feature": col_name,
@@ -78,6 +96,9 @@ def compute_shap(input_df: pd.DataFrame):
     return base_value, shap_contributions
 
 def predict_batch_csv(file_bytes: bytes, filename: str) -> dict:
+    """
+    Accept raw CSV file bytes, parse, align headers, and predict batch rows.
+    """
     try:
         df = pd.read_csv(io.BytesIO(file_bytes))
     except Exception as e:
@@ -86,7 +107,7 @@ def predict_batch_csv(file_bytes: bytes, filename: str) -> dict:
     if df.empty:
         raise ValueError("Uploaded CSV is empty.")
 
-    # Match columns flexibly (either technical names or exact dataset names)
+    # Match columns flexibly (case-insensitive and technical names)
     col_mapping = {}
     for col in df.columns:
         col_clean = col.strip().lower()
@@ -100,23 +121,18 @@ def predict_batch_csv(file_bytes: bytes, filename: str) -> dict:
     if missing:
         raise ValueError(f"Missing required feature columns: {missing}")
 
-    X_features = df_renamed[FEATURE_COLUMNS].copy()
-
-    # Predict row by row or in batch using model pipelines
+    # Predict row by row using the official predictor logic
     predictions = []
-    for name in bundle["model_order"]:
-        pipeline = bundle["models"][name]
-        pred = pipeline.predict(X_features)
-        predictions.append(pred)
+    for idx, row in df_renamed[FEATURE_COLUMNS].iterrows():
+        sample = {col: (None if pd.isna(row[col]) else float(row[col])) for col in FEATURE_COLUMNS}
+        res = predictor.predict(sample)
+        predictions.append(res["prediction"])
 
-    pred_matrix = np.column_stack(predictions)
-    weights = np.array([bundle["ensemble_weights"][name] for name in bundle["model_order"]])
-    final_preds = (pred_matrix @ weights).round(4)
+    final_preds = np.array(predictions).round(4)
 
     df_out = df.copy()
     df_out["predicted_co2_uptake_mmol_g"] = final_preds
 
-    # Summary metrics
     return {
         "filename": filename,
         "rows_processed": len(df),

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CO₂ Adsorption Predictor · Prediction History</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <a href="index.html" class="brand">
+            <div class="logo">CO₂</div>
+            <div>
+                <b>CO₂ Adsorption Predictor</b>
+                <small>Biomass-Derived Porous Carbons &bull; Interpretable ML</small>
+            </div>
+        </a>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="prediction.html">Prediction & What-If</a></li>
+                <li><a href="batch.html">Batch CSV</a></li>
+                <li><a href="history.html" class="active">History</a></li>
+                <li><a href="models.html">Models</a></li>
+                <li><a href="explainability.html">Explainability</a></li>
+                <li><a href="methodology.html">Methodology</a></li>
+                <li><a href="admin.html" style="color: var(--dark); font-weight: 750;">Admin ⚙️</a></li>
+            </ul>
+        </nav>
+        <div id="backend-status" class="nav-badge"><i></i> Checking System...</div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div>
+                <p class="eyebrow">AUDIT & PERSISTENCE RECORD</p>
+                <h1>Prediction History & Logs</h1>
+                <p class="lead">View past experimental inference queries, model versions, and predicted capacities recorded in the backend datastore without relying on browser local storage.</p>
+            </div>
+            <div class="panel" style="padding: 14px 22px; margin-bottom: 0;">
+                <span class="eyebrow">AUDIT SECURITY</span>
+                <div style="font-size: 15px; font-weight: 800; color: var(--green);">Server-Side JSON Store</div>
+                <small style="color: var(--muted); font-size: 11.5px;">Thread-safe, tamper-evident audit record</small>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Logged Predictions</h2>
+                    <p style="font-size: 13px; color: var(--muted); margin-top: 2px;">Records retrieved securely from <code>GET /api/history</code>.</p>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" id="btn-refresh-history" class="light" style="font-size: 12.5px; height: 34px;">🔄 Refresh Records</button>
+                    <button type="button" id="btn-export-history" class="light" style="font-size: 12.5px; height: 34px;">Export CSV</button>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User / Session</th>
+                            <th>Model Version</th>
+                            <th>Surface Area <small>(m²/g)</small></th>
+                            <th>Temp <small>(°C)</small></th>
+                            <th>Press <small>(bar)</small></th>
+                            <th>Predicted CO₂ <small>(mmol/g)</small></th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr><td colspan="7" style="text-align: center; padding: 30px; color: var(--muted);">Loading history records...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        CO₂ Adsorption ML Project &bull; Biomass-Derived Porous Carbons &bull; Interpretable Ensemble Platform
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/history.js"></script>
+</body>
+</html>

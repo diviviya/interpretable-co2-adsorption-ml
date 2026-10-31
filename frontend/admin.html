@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CO₂ Adsorption Predictor · Admin Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .admin-badge {
+            background: #263238;
+            color: #eceff1;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11.5px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        .modal-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 440px;
+            width: 90%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <a href="index.html" class="brand">
+            <div class="logo" style="background: #263238;">⚙️</div>
+            <div>
+                <b>ML Operations Portal</b>
+                <small>Model Lifecycle &bull; Dataset Ingestion &bull; Versioning</small>
+            </div>
+        </a>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html">User Dashboard</a></li>
+                <li><a href="prediction.html">Prediction</a></li>
+                <li><a href="batch.html">Batch CSV</a></li>
+                <li><a href="admin.html" class="active">Admin Portal</a></li>
+            </ul>
+        </nav>
+        <div id="auth-status-bar" style="display: flex; align-items: center; gap: 10px;">
+            <span class="admin-badge" id="admin-user-pill">Checking Session...</span>
+            <button type="button" id="btn-auth-action" class="light" style="height: 32px; font-size: 12px; padding: 0 12px;">Login</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- HERO -->
+        <section class="hero" style="background: linear-gradient(135deg, #f0f4f2 0%, #e2ece7 100%);">
+            <div>
+                <p class="eyebrow" style="color: #263238;">ADMINISTRATIVE INTERFACE</p>
+                <h1>Model Governance & Training Center</h1>
+                <p class="lead">Supervise continuous learning, validate new experimental datasets, monitor asynchronous retraining jobs, and execute atomic model rollbacks or activations.</p>
+            </div>
+            <div class="panel" style="padding: 14px 22px; margin-bottom: 0;">
+                <span class="eyebrow">ACTIVE VERSION</span>
+                <div id="hero-active-version" style="font-size: 18px; font-weight: 800; color: var(--green);">Loading...</div>
+                <small id="hero-active-r2" style="color: var(--muted); font-size: 11.5px;">Test R²: ...</small>
+            </div>
+        </section>
+
+        <!-- ADMIN LOGIN NOTICE IF LOGGED OUT -->
+        <div id="login-required-banner" style="display: none; background: #fff8e1; border: 1px solid #ffe082; padding: 18px 22px; border-radius: 10px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <b style="color: #f57f17; font-size: 14px;">⚠️ Administrative Authentication Required</b>
+                <p style="font-size: 13px; color: #5d4037; margin-top: 2px;">You are currently browsing as a guest. Login with an admin account to upload datasets, start training jobs, or activate models.</p>
+            </div>
+            <button type="button" id="btn-banner-login" class="primary" style="height: 36px; font-size: 13px; background: #263238;">Log In as Admin</button>
+        </div>
+
+        <div class="grid-2">
+            <!-- 1. DATASET UPLOAD & VALIDATION -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>1. Dataset Ingestion & Validation</h2>
+                    <span class="badge-tag">Pre-Flight Check</span>
+                </div>
+                <p style="font-size: 13px; color: var(--muted); margin-bottom: 14px;">
+                    Upload new curated experimental CSV files. The backend strictly verifies all 10 features, target column (<code>CO2 uptake (mmol/g)</code>), and ensures a minimum of 20 valid rows before saving.
+                </p>
+
+                <form id="dataset-upload-form">
+                    <input type="file" id="dataset-file-input" accept=".csv" style="display: block; margin-bottom: 12px; font-size: 13px;">
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" id="btn-upload-dataset" class="light" style="font-size: 13px;">Verify & Ingest Dataset</button>
+                    </div>
+                </form>
+
+                <div id="dataset-feedback" style="display: none; margin-top: 14px; font-size: 13px; padding: 12px; border-radius: 8px;"></div>
+            </section>
+
+            <!-- 2. TRAINING MANAGEMENT -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>2. Training Job Management</h2>
+                    <span id="training-status-tag" class="badge-tag">Idle</span>
+                </div>
+                <p style="font-size: 13px; color: var(--muted); margin-bottom: 14px;">
+                    Launch asynchronous background retraining with 5-fold cross-validation. Retraining evaluates tuned CatBoost, LightGBM, and XGBoost architectures and generates a candidate model version.
+                </p>
+
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 16px;">
+                    <button type="button" id="btn-start-training" class="primary" style="height: 40px; font-size: 13.5px; background: #263238;">
+                        🚀 Launch Retraining Pipeline
+                    </button>
+                    <span id="training-spinner" style="display: none; font-size: 13px; color: var(--muted);">⚙️ Training in progress...</span>
+                </div>
+
+                <div id="training-log-card" style="display: none; background: #f8faf9; border: 1px solid var(--line); border-radius: 8px; padding: 14px; font-size: 12.5px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <b>Job ID: <span id="job-id-display">-</span></b>
+                        <span id="job-status-pill" class="badge-tag">running</span>
+                    </div>
+                    <p id="job-details-display" style="color: var(--muted); margin-bottom: 6px;">Pipeline started...</p>
+                    <small id="job-metrics-display" style="font-family: monospace; display: block; color: var(--dark);"></small>
+                </div>
+            </section>
+        </div>
+
+        <!-- 3. MODEL VERSION MANAGEMENT & AUDIT LOG -->
+        <section class="panel" style="margin-top: 25px;">
+            <div class="panel-header">
+                <div>
+                    <h2>3. Registered Model Versions & Deployments</h2>
+                    <p style="font-size: 13px; color: var(--muted); margin-top: 2px;">
+                        Manage candidate models and rollback instantly if regression occurs. Zero downtime deployment.
+                    </p>
+                </div>
+                <button type="button" id="btn-refresh-models" class="light" style="font-size: 12.5px; height: 34px;">🔄 Refresh Versions</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Version ID</th>
+                            <th>Architecture / Description</th>
+                            <th>Status</th>
+                            <th>Test R² Score</th>
+                            <th>MAE <small>(mmol/g)</small></th>
+                            <th>Ensemble Weights</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-models-tbody">
+                        <tr><td colspan="7" style="text-align: center; padding: 30px;">Loading model registry...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 4. SYSTEM AUDIT TRAIL -->
+        <section class="panel" style="margin-top: 25px;">
+            <div class="panel-header">
+                <h2>4. Administrative Audit Trail</h2>
+                <span class="badge-tag">Tamper-Proof Audit</span>
+            </div>
+            <p style="font-size: 13px; color: var(--muted); margin-bottom: 12px;">Chronological record of model activations, rollbacks, and dataset uploads.</p>
+            <div class="table-wrapper" style="max-height: 250px; overflow-y: auto;">
+                <table style="font-size: 12.5px;">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Admin</th>
+                            <th>Action</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audit-logs-tbody">
+                        <tr><td colspan="4" style="text-align: center; padding: 20px;">Loading audit logs...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- LOGIN MODAL -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal-card">
+            <h3 style="font-size: 18px; margin-bottom: 12px; font-weight: 800;">Admin Authentication</h3>
+            <p style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">Enter your administrative credentials to obtain a secure JWT session token.</p>
+            <form id="login-form">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px;">Username</label>
+                    <input type="text" id="login-username" value="admin" style="width: 100%; height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px;" required>
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px;">Password</label>
+                    <input type="password" id="login-password" value="admin123" style="width: 100%; height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px;" required>
+                </div>
+                <div id="login-error" style="display: none; color: var(--danger); font-size: 12.5px; margin-bottom: 12px;"></div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" id="btn-cancel-login" class="light">Cancel</button>
+                    <button type="submit" class="primary" style="background: #263238;">Sign In</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CONFIRMATION MODAL -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal-card">
+            <h3 id="confirm-title" style="font-size: 18px; margin-bottom: 8px; font-weight: 800;">Confirm Action</h3>
+            <p id="confirm-message" style="font-size: 13.5px; color: var(--muted); margin-bottom: 20px; line-height: 1.5;"></p>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" id="btn-confirm-cancel" class="light">Cancel</button>
+                <button type="button" id="btn-confirm-ok" class="primary" style="background: var(--dark);">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        CO₂ Adsorption ML Project &bull; Biomass-Derived Porous Carbons &bull; Interpretable Ensemble Platform
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
