@@ -21,16 +21,18 @@ from sklearn.model_selection import train_test_split
 from ml.data_validation import FEATURE_COLUMNS, TARGET_COLUMN, validate_training_dataset
 from ml.evaluation import evaluate_regression
 from ml.train import build_model_pipelines
+from backend.services.storage_service import STORAGE_DIR
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-ADMIN_CANDIDATE_DIR = PROJECT_ROOT / "artifacts" / "admin_candidates"
+ADMIN_CANDIDATE_DIR = STORAGE_DIR / "admin_candidates"
+UPLOAD_DATASETS_DIR = STORAGE_DIR / "datasets"
 
 
 def train_uploaded_dataset(dataset_path: str | Path, random_state: int = 42) -> dict:
     """Fit six regressors, optimize nonnegative validation weights, save candidate."""
     dataset_path = Path(dataset_path).resolve()
     try:
-        dataset_path.relative_to((PROJECT_ROOT / "backend" / "storage" / "datasets").resolve())
+        dataset_path.relative_to(UPLOAD_DATASETS_DIR.resolve())
     except ValueError as exc:
         raise ValueError("Training data must be an uploaded dataset in backend storage.") from exc
 
@@ -122,7 +124,7 @@ def train_uploaded_dataset(dataset_path: str | Path, random_state: int = 42) -> 
         "name": "Admin-retrained ensemble",
         "status": "candidate",
         "created_at": created.isoformat(),
-        "artifact_path": artifact_path.relative_to(PROJECT_ROOT).as_posix(),
+        "artifact_path": str(artifact_path.resolve()),
         "dataset_filename": dataset_path.name,
         "dataset_sha256": dataset_hash,
         "rows_received": int(report.rows_received),
