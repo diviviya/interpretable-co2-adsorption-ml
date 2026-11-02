@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 import io
 import math
+import re
 from typing import Annotated
 
 import pandas as pd
@@ -268,7 +269,7 @@ async def predict_batch_endpoint(
     current_user: Annotated[dict, Depends(get_current_user)] = None,
 ):
     """Authenticated CSV batch prediction for any registered user."""
-    if not file.filename.endswith(".csv"):
+    if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are supported.")
 
     content = await file.read()
@@ -303,7 +304,7 @@ async def download_batch_csv(
         raise HTTPException(status_code=400, detail="File size exceeds 15MB limit.")
     try:
         result = predict_batch_csv(content, file.filename)
-        safe_filename = Path(file.filename).name.replace('"', "").replace("\\", "_")
+        safe_filename = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(file.filename).name).strip("._") or "predictions.csv"
         return Response(
             content=result["csv_content"],
             media_type="text/csv",
