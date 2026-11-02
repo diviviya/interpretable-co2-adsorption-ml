@@ -219,6 +219,7 @@ __marimo__/
 
 # Raw research dataset (kept local)
 
-# Local runtime state and uploaded datasets
+# Local secrets and all runtime state (users, history, uploaded data, model registry, candidates)
 backend/.env
+backend/storage/
 backend/storage/datasets/
