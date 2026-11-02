@@ -9,11 +9,10 @@ import re
 import threading
 from datetime import datetime, timezone
 import pandas as pd
-from backend.services.storage_service import JSONStorage, _read_json, _write_json
+from backend.services.storage_service import JSONStorage, STORAGE_DIR, _read_json, _write_json
 from ml.admin_training import train_uploaded_dataset
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DATASETS_DIR = PROJECT_ROOT / "backend" / "storage" / "datasets"
+DATASETS_DIR = STORAGE_DIR / "datasets"
 DATASETS_DIR.mkdir(parents=True, exist_ok=True)
 
 REQUIRED_FEATURES = [
