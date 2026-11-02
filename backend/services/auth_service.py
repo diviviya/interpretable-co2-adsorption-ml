@@ -1,12 +1,23 @@
 
 from datetime import datetime, timedelta, timezone
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 import jwt
 from fastapi import Header, HTTPException, status
 from backend.services.storage_service import JSONStorage, _verify_password
 
-JWT_SECRET = "glassformai-secret-key-co2-adsorption-2026"
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    if os.getenv("ENVIRONMENT", "development").lower() == "production":
+        raise RuntimeError("JWT_SECRET must be set in production.")
+    JWT_SECRET = "local-development-only-change-before-deployment-2026"
+if len(JWT_SECRET) < 32:
+    raise RuntimeError("JWT_SECRET must contain at least 32 characters.")
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRATION_HOURS = 24
+JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
 
 def authenticate_user(username: str, password: str):
     user = JSONStorage.get_user_by_username(username)

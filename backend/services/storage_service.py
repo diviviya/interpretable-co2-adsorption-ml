@@ -9,6 +9,10 @@ import threading
 from datetime import datetime, timezone
 import hashlib
 import secrets
+import os
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 STORAGE_DIR = PROJECT_ROOT / "backend" / "storage"
@@ -52,13 +56,25 @@ class JSONStorage:
     @classmethod
     def init_storage(cls):
         with _lock:
-            # 1. Initialize Users (default admin user: admin / admin123)
+            # 1. Bootstrap an administrator only from explicit environment settings.
+            # Never create a publicly known default admin password.
             users = _read_json(cls.USERS_FILE, [])
-            if not any(u.get("username") == "admin" for u in users):
-                pwd_hash, salt = _hash_password("admin123")
+            # Remove the repository's historical, publicly documented admin/admin123 seed.
+            legacy_hash = "f53b59e88023843a3eca422075dcb5f9c93f96844a18d3f2961e1557e5516e5c"
+            safe_users = [u for u in users if not (u.get("username", "").lower() == "admin" and u.get("password_hash") == legacy_hash)]
+            if len(safe_users) != len(users):
+                users = safe_users
+                _write_json(cls.USERS_FILE, users)
+            admin_username = os.getenv("ADMIN_USERNAME")
+            admin_password = os.getenv("ADMIN_PASSWORD")
+            if admin_username and admin_password and not any(
+                u.get("username", "").lower() == admin_username.lower() for u in users
+            ):
+                pwd_hash, salt = _hash_password(admin_password)
+                next_id = max((u.get("id", 0) for u in users), default=0) + 1
                 users.append({
-                    "id": 1,
-                    "username": "admin",
+                    "id": next_id,
+                    "username": admin_username,
                     "role": "admin",
                     "password_hash": pwd_hash,
                     "salt": salt,
@@ -68,6 +84,11 @@ class JSONStorage:
 
             # 2. Initialize Model Versions
             models = _read_json(cls.MODELS_FILE, [])
+            for model in models:
+                if model.get("version") == "v1.0-ensemble" and not model.get("artifact_path"):
+                    model["artifact_path"] = "artifacts/deployment/co2_adsorption_ensemble.joblib"
+            if models:
+                _write_json(cls.MODELS_FILE, models)
             if not models:
                 models = [
                     {
@@ -118,6 +139,8 @@ class JSONStorage:
 
     @classmethod
     def create_user(cls, username: str, password: str, role: str = "user"):
+        if role not in {"user", "admin"}:
+            raise ValueError("Invalid account role")
         with _lock:
             users = _read_json(cls.USERS_FILE, [])
             if any(u["username"].lower() == username.lower() for u in users):

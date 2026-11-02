@@ -17,7 +17,7 @@ from backend.schemas import (
     UserResponse,
     TrainJobStartRequest,
 )
-from backend.services.storage_service import JSONStorage
+from backend.services.storage_service import JSONStorage, _read_json
 from backend.services.auth_service import (
     authenticate_user,
     create_access_token,
@@ -26,6 +26,7 @@ from backend.services.auth_service import (
     get_current_admin,
 )
 from backend.services.prediction_service import (
+    activate_prediction_bundle,
     predict_single,
     compute_shap,
     predict_batch_csv,
@@ -73,13 +74,80 @@ def health_check():
     }
 
 # =============================================================================
+# ADMIN ANALYTICS DASHBOARD
+# =============================================================================
+@app.get("/api/admin/analytics")
+def admin_analytics(admin_user: Annotated[dict, Depends(get_current_admin)]):
+    """Return dashboard metrics calculated from the current dataset and JSON stores."""
+    dataset_path = PROJECT_ROOT / "data" / "Processed_527_datapoints.csv"
+    dataset_summary = {"available": False, "row_count": 0, "feature_count": len(FEATURE_COLUMNS),
+                       "target": "CO2 uptake (mmol/g)", "target_stats": None,
+                       "target_distribution": [], "feature_quality": []}
+    if dataset_path.is_file():
+        try:
+            frame = pd.read_csv(dataset_path)
+            target = pd.to_numeric(frame.get("CO2 uptake (mmol/g)"), errors="coerce")
+            dataset_summary["available"] = True
+            dataset_summary["row_count"] = int(len(frame))
+            dataset_summary["column_count"] = int(len(frame.columns))
+            if target is not None and target.notna().any():
+                dataset_summary["target_stats"] = {
+                    "mean": round(float(target.mean()), 4),
+                    "median": round(float(target.median()), 4),
+                    "min": round(float(target.min()), 4),
+                    "max": round(float(target.max()), 4),
+                    "std": round(float(target.std()), 4),
+                    "missing": int(target.isna().sum()),
+                }
+                counts = pd.cut(target.dropna(), bins=8, duplicates="drop").value_counts(sort=False)
+                dataset_summary["target_distribution"] = [
+                    {"range": str(interval), "count": int(count)}
+                    for interval, count in counts.items()
+                ]
+            for column in FEATURE_COLUMNS:
+                if column in frame.columns:
+                    values = pd.to_numeric(frame[column], errors="coerce")
+                    dataset_summary["feature_quality"].append({
+                        "feature": column,
+                        "missing": int(values.isna().sum()),
+                        "mean": round(float(values.mean()), 4) if values.notna().any() else None,
+                        "min": round(float(values.min()), 4) if values.notna().any() else None,
+                        "max": round(float(values.max()), 4) if values.notna().any() else None,
+                    })
+        except Exception as exc:
+            dataset_summary["error"] = f"Could not read the project dataset: {exc}"
+
+    predictions = JSONStorage.get_predictions(limit=100000)
+    jobs = _read_json(JSONStorage.JOBS_FILE, [])
+    datasets = _read_json(JSONStorage.DATASETS_FILE, [])
+    audit = JSONStorage.get_audit_logs(limit=8)
+    versions = JSONStorage.get_model_versions()
+    active = JSONStorage.get_active_model_version()
+    return {
+        "dataset": dataset_summary,
+        "activity": {
+            "prediction_count": len(predictions),
+            "training_job_count": len(jobs),
+            "completed_training_jobs": sum(j.get("status") == "completed" for j in jobs),
+            "failed_training_jobs": sum(j.get("status") == "failed" for j in jobs),
+            "uploaded_dataset_count": len(datasets),
+        },
+        "models": {
+            "active_version": active.get("version") if active else None,
+            "registered_versions": len(versions),
+            "candidate_versions": sum(m.get("status") == "candidate" for m in versions),
+        },
+        "recent_activity": audit,
+    }
+
+# =============================================================================
 # 2. AUTHENTICATION & USER MANAGEMENT
 # =============================================================================
 @app.post("/api/auth/register", response_model=UserResponse)
 def register(request: RegisterRequest):
     """Register a new user account."""
     try:
-        new_user = JSONStorage.create_user(request.username, request.password, request.role)
+        new_user = JSONStorage.create_user(request.username, request.password, "user")
         return new_user
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -120,7 +188,7 @@ def get_me(current_user: Annotated[dict, Depends(get_current_user)]):
 @app.post("/predict")
 def predict_endpoint(
     request: FeatureInput,
-    current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None
+    current_user: Annotated[dict, Depends(get_current_user)]
 ):
     """Single sample prediction with real-time SHAP feature attribution."""
     values = {
@@ -143,8 +211,7 @@ def predict_endpoint(
     version_name = active_model["version"] if active_model else "v1.0-ensemble"
 
     # Save to history audit trail
-    username = current_user["username"] if current_user else "anonymous"
-    JSONStorage.record_prediction(username, values, pred_val, version_name)
+    JSONStorage.record_prediction(current_user["username"], values, pred_val, version_name)
 
     return {
         "predicted_co2_uptake_mmol_g": round(pred_val, 4),
@@ -156,8 +223,11 @@ def predict_endpoint(
     }
 
 @app.post("/api/predict/batch")
-async def predict_batch_endpoint(file: UploadFile = File(...)):
-    """Upload a CSV file of material specs and receive batch predictions."""
+async def predict_batch_endpoint(
+    file: UploadFile = File(...),
+    current_user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """Authenticated CSV batch prediction for any registered user."""
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are supported.")
 
@@ -181,8 +251,11 @@ async def predict_batch_endpoint(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/predict/batch/download")
-async def download_batch_csv(file: UploadFile = File(...)):
-    """Upload a CSV and receive the resulting CSV with predictions appended."""
+async def download_batch_csv(
+    file: UploadFile = File(...),
+    current_user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """Authenticated CSV prediction download for any registered user."""
     content = await file.read()
     try:
         result = predict_batch_csv(content, file.filename)
@@ -195,8 +268,11 @@ async def download_batch_csv(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/what-if")
-def what_if_endpoint(request: WhatIfRequest):
-    """Side-by-side scenario simulation comparing baseline vs modified inputs."""
+def what_if_endpoint(
+    request: WhatIfRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+):
+    """Authenticated side-by-side scenario simulation for any registered user."""
     v_base = {
         "surface_area": request.baseline.surface_area,
         "total_pore_volume": request.baseline.total_pore_volume,
@@ -265,18 +341,24 @@ def what_if_endpoint(request: WhatIfRequest):
 
 @app.get("/api/history")
 def get_prediction_history(
-    current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
+    current_user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50
 ):
-    """Retrieve recent prediction history for the authenticated user or all if admin."""
-    username = current_user["username"] if current_user else None
+    """Users see their own history; administrators can review all users' history."""
+    safe_limit = max(1, min(limit, 200))
+    username = None if current_user.get("role") == "admin" else current_user["username"]
     return {
-        "history": JSONStorage.get_predictions(username, limit=limit)
+        "history": JSONStorage.get_predictions(username, limit=safe_limit)
     }
 
 @app.post("/api/explain")
-def explain_endpoint(request: FeatureInput | None = None):
-    """Retrieve global feature importance rankings and optional local SHAP attribution."""
+def explain_endpoint(
+    request: FeatureInput | None = None,
+    current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
+):
+    """Public global feature rankings; local prediction explanations require login."""
+    if request is not None and (request.surface_area is not None or request.pressure is not None) and current_user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Please log in to request a local prediction explanation.")
     global_importance = []
     shap_csv = RESULTS_DIR / "shap_feature_importance.csv"
     if shap_csv.exists():
@@ -359,7 +441,10 @@ def trigger_training(
     admin_user: Annotated[dict, Depends(get_current_admin)] = None
 ):
     """Admin: Trigger an asynchronous background model retraining job."""
-    job = start_training_job(request.dataset_name, admin_user["username"])
+    try:
+        job = start_training_job(request.dataset_name, admin_user["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {
         "status": "success",
         "message": "Background training job initiated.",
@@ -391,6 +476,10 @@ def activate_model_version(
 ):
     """Admin: Atomically activate a candidate model version."""
     try:
+        model_record = next((m for m in JSONStorage.get_model_versions() if m.get("version") == version), None)
+        if not model_record or not model_record.get("artifact_path"):
+            raise ValueError("This model version has no loadable model artifact.")
+        activate_prediction_bundle(PROJECT_ROOT / model_record["artifact_path"])
         activated = JSONStorage.activate_model_version(version, admin_user["username"])
         return {
             "status": "success",
@@ -407,6 +496,10 @@ def rollback_model_version(
 ):
     """Admin: Roll back active model to a previously approved version."""
     try:
+        model_record = next((m for m in JSONStorage.get_model_versions() if m.get("version") == version), None)
+        if not model_record or not model_record.get("artifact_path"):
+            raise ValueError("This model version has no loadable model artifact.")
+        activate_prediction_bundle(PROJECT_ROOT / model_record["artifact_path"])
         rolled_back = JSONStorage.rollback_model_version(version, admin_user["username"])
         return {
             "status": "success",

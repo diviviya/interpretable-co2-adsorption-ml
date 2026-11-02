@@ -5,6 +5,47 @@
 // =============================================================================
 // 1. TAB NAVIGATION CONTROLLER
 // =============================================================================
+
+// Convert FastAPI errors into readable messages.
+function formatApiError(detail, fallback = "The request could not be completed.") {
+    if (typeof detail === "string") return detail;
+
+    if (Array.isArray(detail)) {
+        return detail.map((item) => {
+            if (typeof item === "string") return item;
+
+            const message = item && typeof item.msg === "string"
+                ? item.msg
+                : "";
+
+            const location = Array.isArray(item?.loc)
+                ? item.loc.filter(part => part !== "body").join(" → ")
+                : "";
+
+            return location && message
+                ? `${location}: ${message}`
+                : (message || JSON.stringify(item));
+        }).filter(Boolean).join("\n") || fallback;
+    }
+
+    if (detail && typeof detail === "object") {
+        if (typeof detail.message === "string") return detail.message;
+        if (typeof detail.msg === "string") return detail.msg;
+        return JSON.stringify(detail);
+    }
+
+    return fallback;
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
 const tabBtnSingle = document.getElementById("tab-btn-single");
 const tabBtnWhatif = document.getElementById("tab-btn-whatif");
 const paneSingle = document.getElementById("pane-single");
@@ -101,22 +142,30 @@ if (form) {
         try {
             const response = await fetch(`${API_BASE}/api/predict`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: authHeaders({ "Content-Type": "application/json" }),
                 body: JSON.stringify(payload)
             });
 
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.detail || "Prediction request failed.");
+                throw new Error(formatApiError(data.detail || "Prediction request failed."));
             }
 
             renderPrediction(data);
             if (quickWhatIfCta) quickWhatIfCta.style.display = "block";
         } catch (err) {
+            if (err.message && /token has expired|invalid authentication token|missing authorization/i.test(err.message)) {
+                localStorage.removeItem("co2_access_token");
+                localStorage.removeItem("co2_user");
+                window.location.href = "login.html";
+                return;
+            }
             resultBox.innerHTML = `
                 <div style="padding: 24px; text-align: center; color: var(--danger);">
                     <h3>Prediction Error</h3>
-                    <p style="font-size: 13px; margin-top: 6px;">${err.message}</p>
+                    <p style="font-size: 13px; margin-top: 6px; white-space: pre-line;">
+                        ${escapeHtml(err.message)}
+                    </p>
                 </div>
             `;
         } finally {
@@ -124,6 +173,138 @@ if (form) {
             predictBtn.textContent = "Predict CO₂ Uptake →";
         }
     });
+}
+
+
+// =============================================================================
+// 2A. BATCH CSV PREDICTION
+// =============================================================================
+const batchForm = document.getElementById("batch-prediction-form");
+const batchFileInput = document.getElementById("batch-csv-file");
+const batchButton = document.getElementById("btn-batch-predict");
+const batchStatus = document.getElementById("batch-prediction-status");
+const batchResult = document.getElementById("batch-prediction-result");
+let lastBatchFile = null;
+
+function batchErrorMessage(detail, fallback) {
+    return formatApiError(detail, fallback);
+}
+
+if (batchForm) {
+    batchForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const file = batchFileInput?.files?.[0];
+        if (!file) {
+            batchStatus.textContent = "Choose a CSV file first.";
+            return;
+        }
+        if (!file.name.toLowerCase().endsWith(".csv")) {
+            batchStatus.textContent = "Only CSV files are supported.";
+            return;
+        }
+        if (file.size > 15 * 1024 * 1024) {
+            batchStatus.textContent = "The CSV file must be 15 MB or smaller.";
+            return;
+        }
+
+        lastBatchFile = file;
+        batchButton.disabled = true;
+        batchButton.textContent = "Processing CSV…";
+        batchStatus.textContent = "Uploading and predicting all rows. Please wait…";
+        batchResult.innerHTML = "";
+
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const response = await fetch(`${API_BASE}/api/predict/batch`, {
+                method: "POST",
+                headers: authHeaders(),
+                body: formData
+            });
+            const data = await response.json();
+            if (response.status === 401) {
+                localStorage.removeItem("co2_access_token");
+                localStorage.removeItem("co2_user");
+                window.location.href = "login.html";
+                return;
+            }
+            if (!response.ok) {
+                throw new Error(batchErrorMessage(data.detail, "Batch prediction failed."));
+            }
+
+            const preview = Array.isArray(data.predictions_preview) ? data.predictions_preview : [];
+            const previewRows = preview.map(row => {
+                const predicted = Number(row.predicted_co2_uptake_mmol_g);
+                const cells = Object.entries(row)
+                    .filter(([key]) => key !== "predicted_co2_uptake_mmol_g")
+                    .slice(0, 3)
+                    .map(([, value]) => `<td>${escapeHtml(value ?? "—")}</td>`)
+                    .join("");
+                return `<tr>${cells}<td><strong>${Number.isFinite(predicted) ? predicted.toFixed(4) : "—"}</strong></td></tr>`;
+            }).join("");
+
+            batchStatus.textContent = `${data.rows_processed} row(s) processed successfully.`;
+            batchResult.innerHTML = `
+                <div class="grid-2" style="margin-top: 12px;">
+                    <div class="panel"><small>Mean predicted uptake</small><h3>${Number(data.mean_uptake_mmol_g).toFixed(4)} mmol/g</h3></div>
+                    <div class="panel"><small>Predicted range</small><h3>${Number(data.min_uptake_mmol_g).toFixed(4)} – ${Number(data.max_uptake_mmol_g).toFixed(4)} mmol/g</h3></div>
+                </div>
+                <p style="font-size:12px;color:var(--muted);margin:12px 0 6px;">Preview (up to 10 rows; first three input columns shown)</p>
+                <div class="table-wrapper"><table><thead><tr><th>Input 1</th><th>Input 2</th><th>Input 3</th><th>Predicted CO₂ uptake (mmol/g)</th></tr></thead><tbody>${previewRows}</tbody></table></div>
+                <button type="button" id="btn-download-batch" class="light" style="margin-top:12px;">Download full prediction CSV ↓</button>
+            `;
+            document.getElementById("btn-download-batch")?.addEventListener("click", downloadBatchPredictions);
+        } catch (error) {
+            batchStatus.textContent = error.message || "Batch prediction failed.";
+        } finally {
+            batchButton.disabled = false;
+            batchButton.textContent = "Run Batch Prediction →";
+        }
+    });
+}
+
+async function downloadBatchPredictions() {
+    if (!lastBatchFile) return;
+    const downloadButton = document.getElementById("btn-download-batch");
+    if (downloadButton) {
+        downloadButton.disabled = true;
+        downloadButton.textContent = "Preparing download…";
+    }
+    try {
+        const formData = new FormData();
+        formData.append("file", lastBatchFile);
+        const response = await fetch(`${API_BASE}/api/predict/batch/download`, {
+            method: "POST",
+            headers: authHeaders(),
+            body: formData
+        });
+        if (response.status === 401) {
+            localStorage.removeItem("co2_access_token");
+            localStorage.removeItem("co2_user");
+            window.location.href = "login.html";
+            return;
+        }
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(batchErrorMessage(data.detail, "Could not prepare the prediction CSV."));
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `predicted_${lastBatchFile.name}`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        batchStatus.textContent = error.message || "Download failed.";
+    } finally {
+        if (downloadButton) {
+            downloadButton.disabled = false;
+            downloadButton.textContent = "Download full prediction CSV ↓";
+        }
+    }
 }
 
 function renderPrediction(data) {
@@ -220,12 +401,15 @@ function populateWhatIf(base, mod) {
 }
 
 function copyToWhatIfBaseline(data) {
+    // Copy the current prediction into the reference baseline only.
+    // The modified/scenario side must remain independent so users can
+    // change it and compare it against the copied baseline.
     whatIfKeys.forEach(k => {
         const baseEl = document.getElementById(`base_${k}`);
-        const modEl = document.getElementById(`mod_${k}`);
-        const val = data[k] !== undefined && data[k] !== "" ? data[k] : (whatIfDefaultBaseline[k] || 0);
+        const val = data[k] !== undefined && data[k] !== ""
+            ? data[k]
+            : whatIfDefaultBaseline[k];
         if (baseEl) baseEl.value = val;
-        if (modEl) modEl.value = val;
     });
     highlightWhatIfChanges();
 }
@@ -301,7 +485,7 @@ if (whatIfForm) {
         try {
             const res = await fetch(`${API_BASE}/api/what-if`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: authHeaders({ "Content-Type": "application/json" }),
                 body: JSON.stringify({
                     baseline: basePayload,
                     modified: modPayload
@@ -313,6 +497,12 @@ if (whatIfForm) {
 
             renderWhatIfResults(data);
         } catch (err) {
+            if (err.message && /token has expired|invalid authentication token|missing authorization/i.test(err.message)) {
+                localStorage.removeItem("co2_access_token");
+                localStorage.removeItem("co2_user");
+                window.location.href = "login.html";
+                return;
+            }
             whatIfResult.innerHTML = `
                 <div style="padding: 20px; color: var(--danger); text-align: center;">
                     <h3>What-If Simulation Error</h3>

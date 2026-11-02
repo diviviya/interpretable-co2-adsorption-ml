@@ -1,7 +1,7 @@
 
 from typing import Any
 import math
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -9,9 +9,8 @@ class LoginRequest(BaseModel):
     password: str
 
 class RegisterRequest(BaseModel):
-    username: str
-    password: str
-    role: str = "user"
+    username: str = Field(min_length=3, max_length=40, pattern=r"^[A-Za-z0-9_.-]+$")
+    password: str = Field(min_length=10, max_length=128)
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -65,6 +64,38 @@ class FeatureInput(BaseModel):
         for name, value in self:
             if value is not None and not math.isfinite(value):
                 raise ValueError(f"{name} must be a finite number or null")
+
+        # Physical/domain validation shared by all single-prediction requests.
+        non_negative = {
+            "surface_area": "Surface area",
+            "total_pore_volume": "Total pore volume",
+            "micropore_volume": "Micropore volume",
+        }
+        for field_name, label in non_negative.items():
+            value = getattr(self, field_name)
+            if value is not None and value < 0:
+                raise ValueError(f"{label} cannot be negative.")
+
+        percentages = {
+            "carbon": "Carbon",
+            "hydrogen": "Hydrogen",
+            "nitrogen": "Nitrogen",
+            "oxygen": "Oxygen",
+            "sulfur": "Sulfur",
+        }
+        for field_name, label in percentages.items():
+            value = getattr(self, field_name)
+            if value is not None and not 0 <= value <= 100:
+                raise ValueError(f"{label} percentage must be between 0 and 100.")
+
+        temperature = self.temperature
+        if temperature is not None and temperature <= -273.15:
+            raise ValueError("Temperature must be above absolute zero (-273.15 °C).")
+
+        pressure = self.pressure
+        if pressure is not None and pressure <= 0:
+            raise ValueError("Pressure must be greater than 0 bar.")
+
         return self
 
 class WhatIfRequest(BaseModel):
@@ -72,7 +103,7 @@ class WhatIfRequest(BaseModel):
     modified: FeatureInput
 
 class TrainJobStartRequest(BaseModel):
-    dataset_name: str = "Processed_527_datapoints.csv"
+    dataset_name: str = Field(min_length=1, max_length=255)
 
 # -----------------------------------------------------------------------------
 # GENERIC RESPONSE SCHEMAS
