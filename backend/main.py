@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import io
 import math
 from typing import Annotated
@@ -48,13 +49,52 @@ app = FastAPI(
     version="2.1.0",
 )
 
+environment = os.getenv("ENVIRONMENT", "development").lower()
+allowed_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if environment != "production" and not allowed_origins:
+    allowed_origins = [
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+
+def _resolve_model_artifact_path(artifact_path: str) -> Path:
+    path = Path(artifact_path).expanduser()
+    return path.resolve() if path.is_absolute() else (PROJECT_ROOT / path).resolve()
+
+
+def _restore_active_model_bundle() -> None:
+    """Restore the registered active model after a process restart."""
+    active_model = JSONStorage.get_active_model_version()
+    if not active_model or active_model.get("status") != "active":
+        return
+    artifact_path = active_model.get("artifact_path")
+    if not artifact_path:
+        raise RuntimeError(f"Active model {active_model.get('version')} has no artifact_path.")
+    resolved_path = _resolve_model_artifact_path(artifact_path)
+    if not resolved_path.is_file():
+        raise RuntimeError(
+            f"Active model artifact is missing: {resolved_path}. "
+            "Check the persistent disk and model artifact configuration."
+        )
+    activate_prediction_bundle(resolved_path)
+
+
+_restore_active_model_bundle()
 
 # =============================================================================
 # 1. SYSTEM HEALTH
@@ -245,7 +285,7 @@ async def predict_batch_endpoint(
             "min_uptake_mmol_g": result["min_uptake_mmol_g"],
             "max_uptake_mmol_g": result["max_uptake_mmol_g"],
             "predictions_preview": result["predictions_preview"],
-            "download_url": f"/api/predict/batch/download?filename={file.filename}"
+            "download_url": "/api/predict/batch/download"
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -256,13 +296,18 @@ async def download_batch_csv(
     current_user: Annotated[dict, Depends(get_current_user)] = None,
 ):
     """Authenticated CSV prediction download for any registered user."""
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported.")
     content = await file.read()
+    if len(content) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size exceeds 15MB limit.")
     try:
         result = predict_batch_csv(content, file.filename)
+        safe_filename = Path(file.filename).name.replace('"', "").replace("\\", "_")
         return Response(
             content=result["csv_content"],
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename=predicted_{file.filename}"}
+            headers={"Content-Disposition": f'attachment; filename="predicted_{safe_filename}"'}
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -479,7 +524,7 @@ def activate_model_version(
         model_record = next((m for m in JSONStorage.get_model_versions() if m.get("version") == version), None)
         if not model_record or not model_record.get("artifact_path"):
             raise ValueError("This model version has no loadable model artifact.")
-        activate_prediction_bundle(PROJECT_ROOT / model_record["artifact_path"])
+        activate_prediction_bundle(_resolve_model_artifact_path(model_record["artifact_path"]))
         activated = JSONStorage.activate_model_version(version, admin_user["username"])
         return {
             "status": "success",
@@ -499,7 +544,7 @@ def rollback_model_version(
         model_record = next((m for m in JSONStorage.get_model_versions() if m.get("version") == version), None)
         if not model_record or not model_record.get("artifact_path"):
             raise ValueError("This model version has no loadable model artifact.")
-        activate_prediction_bundle(PROJECT_ROOT / model_record["artifact_path"])
+        activate_prediction_bundle(_resolve_model_artifact_path(model_record["artifact_path"]))
         rolled_back = JSONStorage.rollback_model_version(version, admin_user["username"])
         return {
             "status": "success",
