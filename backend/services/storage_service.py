@@ -15,8 +15,15 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-STORAGE_DIR = PROJECT_ROOT / "backend" / "storage"
+# Set CO2_DATA_DIR to the mounted persistent-disk path in production (for example /var/data).
+# The default preserves the existing local development layout.
+_configured_data_dir = os.getenv("CO2_DATA_DIR", "").strip()
+STORAGE_DIR = Path(
+    _configured_data_dir or (PROJECT_ROOT / "backend" / "storage")
+).expanduser().resolve()
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+(STORAGE_DIR / "datasets").mkdir(parents=True, exist_ok=True)
+(STORAGE_DIR / "admin_candidates").mkdir(parents=True, exist_ok=True)
 
 _lock = threading.Lock()
 
@@ -94,6 +101,7 @@ class JSONStorage:
                     {
                         "version": "v1.0-ensemble",
                         "name": "Validation-Optimized Weighted Ensemble",
+                        "artifact_path": "artifacts/deployment/co2_adsorption_ensemble.joblib",
                         "status": "active",
                         "metrics": {"R2": 0.8173, "RMSE": 0.7064, "MAE": 0.5220},
                         "weights": {
