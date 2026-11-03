@@ -6,12 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .routers import health, predict
 from .services.model_service import model_service
-
+from .services import history_service
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Runs once at startup: load the 49 MB model bundle into memory, so each
     # prediction doesn't have to reload it from disk.
+    history_service.init_db()
     model_service.load()
     yield
 
