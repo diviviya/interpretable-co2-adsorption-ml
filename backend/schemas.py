@@ -1,7 +1,7 @@
 
 from typing import Any
 import math
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -9,8 +9,9 @@ class LoginRequest(BaseModel):
     password: str
 
 class RegisterRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=40, pattern=r"^[A-Za-z0-9_.-]+$")
-    password: str = Field(min_length=10, max_length=128)
+    username: str
+    password: str
+    role: str = "user"
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -65,37 +66,33 @@ class FeatureInput(BaseModel):
             if value is not None and not math.isfinite(value):
                 raise ValueError(f"{name} must be a finite number or null")
 
-        # Physical/domain validation shared by all single-prediction requests.
-        non_negative = {
-            "surface_area": "Surface area",
-            "total_pore_volume": "Total pore volume",
-            "micropore_volume": "Micropore volume",
+        # Physical/domain checks shared by the API's canonical fields and aliases.
+        nonnegative = {
+            "surface_area": "Surface area cannot be negative",
+            "total_pore_volume": "Total pore volume cannot be negative",
+            "micropore_volume": "Micropore volume cannot be negative",
         }
-        for field_name, label in non_negative.items():
+        for field_name, message in nonnegative.items():
             value = getattr(self, field_name)
             if value is not None and value < 0:
-                raise ValueError(f"{label} cannot be negative.")
+                raise ValueError(message)
 
-        percentages = {
-            "carbon": "Carbon",
-            "hydrogen": "Hydrogen",
-            "nitrogen": "Nitrogen",
-            "oxygen": "Oxygen",
-            "sulfur": "Sulfur",
+        percentage_fields = {
+            "carbon": "Carbon percentage must be between 0 and 100",
+            "hydrogen": "Hydrogen percentage must be between 0 and 100",
+            "nitrogen": "Nitrogen percentage must be between 0 and 100",
+            "oxygen": "Oxygen percentage must be between 0 and 100",
+            "sulfur": "Sulfur percentage must be between 0 and 100",
         }
-        for field_name, label in percentages.items():
+        for field_name, message in percentage_fields.items():
             value = getattr(self, field_name)
             if value is not None and not 0 <= value <= 100:
-                raise ValueError(f"{label} percentage must be between 0 and 100.")
+                raise ValueError(message)
 
-        temperature = self.temperature
-        if temperature is not None and temperature <= -273.15:
-            raise ValueError("Temperature must be above absolute zero (-273.15 °C).")
-
-        pressure = self.pressure
-        if pressure is not None and pressure <= 0:
-            raise ValueError("Pressure must be greater than 0 bar.")
-
+        if self.temperature is not None and self.temperature <= -273.15:
+            raise ValueError("Temperature must be above absolute zero")
+        if self.pressure is not None and self.pressure <= 0:
+            raise ValueError("Pressure must be greater than 0 bar")
         return self
 
 class WhatIfRequest(BaseModel):
@@ -103,7 +100,7 @@ class WhatIfRequest(BaseModel):
     modified: FeatureInput
 
 class TrainJobStartRequest(BaseModel):
-    dataset_name: str = Field(min_length=1, max_length=255)
+    dataset_name: str = "Processed_527_datapoints.csv"
 
 # -----------------------------------------------------------------------------
 # GENERIC RESPONSE SCHEMAS

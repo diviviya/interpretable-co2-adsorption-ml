@@ -131,3 +131,10 @@ def test_missing_batch_features_remain_allowed_for_imputation():
     frame = valid_batch_frame()
     frame.loc[0, "Micropore Volume (cm3/g)"] = np.nan
     _validate_prediction_frame(frame)
+
+
+def test_prediction_row_with_no_feature_values_is_rejected():
+    frame = valid_batch_frame(rows=1)
+    frame.loc[:, :] = np.nan
+    with pytest.raises(ValueError, match="no feature values"):
+        _validate_prediction_frame(frame)

@@ -1,1 +1,46 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Sign in · CO₂ Adsorption</title><link rel="stylesheet" href="css/style.css"><style>.auth-card{max-width:440px;margin:45px auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px}.auth-card input{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;margin:8px 0 16px}.auth-card button{width:100%;padding:12px;background:var(--green);color:white;border:0;border-radius:8px;font-weight:700;cursor:pointer}.auth-card p{font-size:13px;color:var(--muted);margin:8px 0 16px}</style></head><body><header class="topbar"><a href="index.html" class="brand"><div class="logo">CO₂</div><div><b>CO₂ Adsorption Predictor</b><small>Account access</small></div></a><a href="index.html">Home</a></header><main><section class="auth-card"><p class="eyebrow">ACCOUNT</p><h1 style="font-size:28px">Sign in</h1><p>Sign in to access your account. Administrator access is assigned by the system, not selected during registration.</p><form id="login-form"><label>Username</label><input name="username" required autocomplete="username"><label>Password</label><input name="password" type="password" required autocomplete="current-password"><button>Sign in</button></form><div id="login-status" class="status"></div><hr style="margin:22px 0;border:0;border-top:1px solid var(--line)"><h2 style="font-size:18px">Create a user account</h2><form id="register-form"><label>Username</label><input name="username" required minlength="3" maxlength="40"><label>Password (at least 10 characters)</label><input name="password" type="password" required minlength="10"><button>Create account</button></form><div id="register-status" class="status"></div></section></main><script src="js/auth.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account access | CarbonLab</title><link rel="stylesheet" href="css/style.css?v=carbonlab-final-20261103">
+</head>
+<body class="auth-body">
+  <main class="auth-layout">
+    <a class="auth-brand" href="index.html"><span class="brand-symbol">C₂</span><span>CarbonLab</span></a>
+    <section class="auth-card">
+      <p class="eyebrow">CARBONLAB ACCOUNT</p>
+      <div class="auth-tabs" role="tablist" aria-label="Account access">
+        <button class="auth-tab active" type="button" data-auth-tab="login">Sign in</button>
+        <button class="auth-tab" type="button" data-auth-tab="register">Sign up</button>
+      </div>
+      <section id="login-pane" class="auth-pane">
+        <h1>Welcome back</h1><p class="muted">Sign in to continue.</p>
+        <form id="login-form" class="form-stack">
+          <label>Username<input name="username" autocomplete="username" required></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+          <button class="button-primary" type="submit">Sign in <span>→</span></button>
+        </form>
+        <p id="login-status" class="form-status" role="status"></p>
+      </section>
+      <section id="register-pane" class="auth-pane" hidden>
+        <h1>Create account</h1><p class="muted">New registrations receive standard user access.</p>
+        <form id="register-form" class="form-stack">
+          <label>Username<input name="username" autocomplete="username" minlength="3" maxlength="40" required></label>
+          <label>Password <small>At least 10 characters</small><input name="password" type="password" autocomplete="new-password" minlength="10" required></label>
+          <button class="button-primary" type="submit">Create account <span>→</span></button>
+        </form>
+        <p id="register-status" class="form-status" role="status"></p>
+      </section>
+    </section>
+    <p class="auth-footnote">CO₂ ADSORPTION PREDICTION PLATFORM</p>
+  </main>
+  <script src="js/auth.js?v=carbonlab-final-20261103"></script>
+  <script>
+    document.querySelectorAll('[data-auth-tab]').forEach((button) => button.addEventListener('click', () => {
+      document.querySelectorAll('[data-auth-tab]').forEach((tab) => tab.classList.toggle('active', tab === button));
+      document.getElementById('login-pane').hidden = button.dataset.authTab !== 'login';
+      document.getElementById('register-pane').hidden = button.dataset.authTab !== 'register';
+    }));
+  </script>
+</body>
+</html>

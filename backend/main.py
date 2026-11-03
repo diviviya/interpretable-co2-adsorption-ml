@@ -34,6 +34,8 @@ from backend.services.prediction_service import (
     predict_batch_csv,
     bundle,
     FEATURE_COLUMNS,
+    get_bundle_snapshot,
+    restore_bundle,
 )
 from backend.services.training_service import (
     validate_and_save_dataset,
@@ -96,6 +98,40 @@ def _restore_active_model_bundle() -> None:
 
 
 _restore_active_model_bundle()
+JSONStorage.mark_interrupted_training_jobs()
+
+def _public_model_metadata(model_record: dict | None) -> dict | None:
+    """Return safe, current registry metadata without server filesystem paths."""
+    if not model_record:
+        return None
+    active_bundle = get_bundle_snapshot()
+    weights = model_record.get("weights") or active_bundle.get("ensemble_weights", {})
+    return {
+        "version": model_record.get("version"),
+        "name": model_record.get("name") or active_bundle.get("ensemble_strategy"),
+        "status": model_record.get("status"),
+        "ensemble_strategy": active_bundle.get("ensemble_strategy"),
+        "model_order": list(active_bundle.get("model_order", [])),
+        "weights": weights,
+        "metrics": model_record.get("metrics"),
+        "metrics_scope": model_record.get("metrics_scope") or ("held_out_test" if model_record.get("version") == "v1.0-ensemble" else "validation"),
+        "dataset_filename": model_record.get("dataset_filename"),
+        "dataset_sha256": model_record.get("dataset_sha256"),
+        "rows_received": model_record.get("rows_received"),
+        "rows_after_duplicate_removal": model_record.get("rows_after_duplicate_removal"),
+        "train_rows": model_record.get("train_rows"),
+        "validation_rows": model_record.get("validation_rows"),
+        "test_rows": model_record.get("test_rows"),
+        "test_set_evaluated": model_record.get("test_set_evaluated"),
+        "created_at": model_record.get("created_at"),
+        "activated_at": model_record.get("activated_at"),
+        "activated_by": model_record.get("activated_by"),
+        "validation_method": model_record.get("validation_method"),
+        "note": model_record.get("note"),
+        "prediction_unit": active_bundle.get("prediction_unit", "mmol/g"),
+        "feature_columns": list(active_bundle.get("feature_columns", FEATURE_COLUMNS)),
+    }
+
 
 # =============================================================================
 # 1. SYSTEM HEALTH
@@ -109,8 +145,9 @@ def health_check():
         "status": "healthy",
         "service": "CO2 Adsorption Prediction API",
         "active_model_version": active_model["version"] if active_model else "v1.0",
-        "model_strategy": bundle["ensemble_strategy"],
-        "storage": "JSON Persistent Store (No SQL)",
+        "model_strategy": get_bundle_snapshot().get("ensemble_strategy"),
+        "active_model": _public_model_metadata(active_model),
+        "storage": "JSON persistent store (single application instance)",
         "features_count": len(FEATURE_COLUMNS),
     }
 
@@ -245,8 +282,15 @@ def predict_endpoint(
         "pressure": request.pressure,
     }
 
-    pred_val, input_df = predict_single(values)
-    base_val, shap_list = compute_shap(input_df)
+    active_bundle = get_bundle_snapshot()
+    try:
+        pred_val, input_df = predict_single(values, active_bundle=active_bundle)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        base_val, shap_list = compute_shap(input_df, active_bundle=active_bundle)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Prediction succeeded, but ensemble SHAP is unavailable: {exc}") from exc
 
     active_model = JSONStorage.get_active_model_version()
     version_name = active_model["version"] if active_model else "v1.0-ensemble"
@@ -257,7 +301,7 @@ def predict_endpoint(
     return {
         "predicted_co2_uptake_mmol_g": round(pred_val, 4),
         "unit": "mmol/g",
-        "model": bundle["ensemble_strategy"],
+        "model": (active_model.get("name") if active_model else None) or active_bundle["ensemble_strategy"],
         "model_version": version_name,
         "base_value": base_val,
         "shap_contributions": shap_list,
@@ -272,13 +316,27 @@ async def predict_batch_endpoint(
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are supported.")
 
-    content = await file.read()
+    content = await file.read(15 * 1024 * 1024 + 1)
     if len(content) > 15 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File size exceeds 15MB limit.")
 
     try:
         result = predict_batch_csv(content, file.filename)
-        # remove raw csv string from json response preview
+        active_model = JSONStorage.get_active_model_version()
+        version_name = active_model.get("version", "unknown") if active_model else "unknown"
+        JSONStorage.record_prediction(
+            current_user["username"],
+            {"filename": Path(file.filename).name, "rows_processed": result["rows_processed"]},
+            result["mean_uptake_mmol_g"], version_name,
+            prediction_type="batch",
+            metadata={
+                "rows_processed": result["rows_processed"],
+                "mean_uptake_mmol_g": result["mean_uptake_mmol_g"],
+                "min_uptake_mmol_g": result["min_uptake_mmol_g"],
+                "max_uptake_mmol_g": result["max_uptake_mmol_g"],
+            },
+        )
+        # The download endpoint intentionally does not create another history entry.
         return {
             "filename": result["filename"],
             "rows_processed": result["rows_processed"],
@@ -299,7 +357,7 @@ async def download_batch_csv(
     """Authenticated CSV prediction download for any registered user."""
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are supported.")
-    content = await file.read()
+    content = await file.read(15 * 1024 * 1024 + 1)
     if len(content) > 15 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File size exceeds 15MB limit.")
     try:
@@ -344,8 +402,12 @@ def what_if_endpoint(
         "pressure": request.modified.pressure,
     }
 
-    base_pred, df_base = predict_single(v_base)
-    mod_pred, df_mod = predict_single(v_mod)
+    active_bundle = get_bundle_snapshot()
+    try:
+        base_pred, df_base = predict_single(v_base, active_bundle=active_bundle)
+        mod_pred, df_mod = predict_single(v_mod, active_bundle=active_bundle)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     delta = mod_pred - base_pred
     pct_change = (delta / base_pred * 100.0) if abs(base_pred) > 1e-6 else 0.0
@@ -376,6 +438,21 @@ def what_if_endpoint(
                 "pct_change": 0.0,
             })
 
+    active_model = JSONStorage.get_active_model_version()
+    version_name = active_model.get("version", "unknown") if active_model else "unknown"
+    JSONStorage.record_prediction(
+        current_user["username"],
+        {"baseline": v_base, "modified": v_mod},
+        mod_pred, version_name,
+        prediction_type="what_if",
+        metadata={
+            "baseline_prediction": round(base_pred, 4),
+            "modified_prediction": round(mod_pred, 4),
+            "delta_mmol_g": round(delta, 4),
+            "percentage_change": round(pct_change, 2),
+        },
+    )
+
     return {
         "baseline_prediction": round(base_pred, 3),
         "modified_prediction": round(mod_pred, 3),
@@ -402,18 +479,9 @@ def explain_endpoint(
     request: FeatureInput | None = None,
     current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
 ):
-    """Public global feature rankings; local prediction explanations require login."""
-    if request is not None and (request.surface_area is not None or request.pressure is not None) and current_user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Please log in to request a local prediction explanation.")
-    global_importance = []
-    shap_csv = RESULTS_DIR / "shap_feature_importance.csv"
-    if shap_csv.exists():
-        df_imp = pd.read_csv(shap_csv)
-        global_importance = df_imp.to_dict(orient="records")
-
-    local_shap = []
-    base_val = None
-    if request is not None and (request.surface_area is not None or request.pressure is not None):
+    """Return local ensemble SHAP for supplied features; no stale global CSV claims."""
+    values = None
+    if request is not None:
         values = {
             "surface_area": request.surface_area,
             "total_pore_volume": request.total_pore_volume,
@@ -426,35 +494,42 @@ def explain_endpoint(
             "temperature": request.temperature,
             "pressure": request.pressure,
         }
-        _, input_df = predict_single(values)
-        base_val, local_shap = compute_shap(input_df)
+    has_input = bool(values and any(value is not None for value in values.values()))
+    if has_input and current_user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Please log in to request a local prediction explanation.")
 
+    base_value, local_shap = None, []
+    active_bundle = get_bundle_snapshot()
+    if has_input:
+        try:
+            _, input_df = predict_single(values, active_bundle=active_bundle)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        try:
+            base_value, local_shap = compute_shap(input_df, active_bundle=active_bundle)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"Ensemble SHAP explanation is temporarily unavailable: {exc}") from exc
+
+    active_model = JSONStorage.get_active_model_version()
     return {
-        "global_importance": global_importance,
-        "base_value": base_val,
+        "global_importance": [],
+        "base_value": base_value,
         "local_shap": local_shap,
-        "note": "SHAP feature values represent cooperative game-theoretic contributions, not physical causality.",
+        "model": _public_model_metadata(active_model),
+        "explanation_scope": "active_weighted_ensemble",
+        "note": "SHAP contributions combine each active component model's TreeSHAP values using the current ensemble weights. They describe model attribution, not physical causality.",
     }
+
 
 @app.get("/api/models")
 def models_endpoint():
-    """Retrieve benchmark test evaluation metrics and ensemble weights."""
-    models_metrics = []
-    results_csv = RESULTS_DIR / "final_test_results.csv"
-    if results_csv.exists():
-        df_res = pd.read_csv(results_csv)
-        models_metrics = df_res.to_dict(orient="records")
-
-    weights_list = []
-    weights_csv = RESULTS_DIR / "ensemble_weights.csv"
-    if weights_csv.exists():
-        df_w = pd.read_csv(weights_csv)
-        weights_list = df_w.to_dict(orient="records")
-
+    """Return metadata for the actually active model, not frozen benchmark CSVs."""
+    active = JSONStorage.get_active_model_version()
     return {
-        "evaluation_metrics": models_metrics,
-        "ensemble_weights": weights_list,
-        "selected_model": bundle["ensemble_strategy"],
+        "active_model": _public_model_metadata(active),
+        "selected_model": get_bundle_snapshot().get("ensemble_strategy"),
+        "evaluation_metrics": ([{"Model": "Active ensemble", **(active.get("metrics") or {})}] if active else []),
+        "ensemble_weights": ([{"Model": name, "Validation_Optimized_Weight": float(weight)} for name, weight in (active.get("weights") or get_bundle_snapshot().get("ensemble_weights", {})).items()] if active else []),
         "features": FEATURE_COLUMNS,
     }
 
@@ -467,10 +542,10 @@ async def upload_retraining_dataset(
     admin_user: Annotated[dict, Depends(get_current_admin)] = None
 ):
     """Admin: Upload and validate a supervised dataset for retraining."""
-    if not file.filename.endswith(".csv"):
+    if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV datasets are accepted.")
 
-    content = await file.read()
+    content = await file.read(15 * 1024 * 1024 + 1)
     try:
         report = validate_and_save_dataset(content, file.filename, admin_user["username"])
         return {
@@ -525,15 +600,20 @@ def activate_model_version(
         model_record = next((m for m in JSONStorage.get_model_versions() if m.get("version") == version), None)
         if not model_record or not model_record.get("artifact_path"):
             raise ValueError("This model version has no loadable model artifact.")
+        previous_bundle = get_bundle_snapshot()
         activate_prediction_bundle(_resolve_model_artifact_path(model_record["artifact_path"]))
-        activated = JSONStorage.activate_model_version(version, admin_user["username"])
+        try:
+            activated = JSONStorage.activate_model_version(version, admin_user["username"])
+        except Exception:
+            restore_bundle(previous_bundle)
+            raise
         return {
             "status": "success",
             "message": f"Model version '{version}' is now active.",
             "model": activated
         }
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Model activation failed: {e}") from e
 
 @app.post("/api/admin/models/{version}/rollback")
 def rollback_model_version(
@@ -545,15 +625,20 @@ def rollback_model_version(
         model_record = next((m for m in JSONStorage.get_model_versions() if m.get("version") == version), None)
         if not model_record or not model_record.get("artifact_path"):
             raise ValueError("This model version has no loadable model artifact.")
+        previous_bundle = get_bundle_snapshot()
         activate_prediction_bundle(_resolve_model_artifact_path(model_record["artifact_path"]))
-        rolled_back = JSONStorage.rollback_model_version(version, admin_user["username"])
+        try:
+            rolled_back = JSONStorage.rollback_model_version(version, admin_user["username"])
+        except Exception:
+            restore_bundle(previous_bundle)
+            raise
         return {
             "status": "success",
             "message": f"Successfully rolled back to version '{version}'.",
             "model": rolled_back
         }
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Model rollback failed: {e}") from e
 
 @app.get("/api/admin/audit-logs")
 def view_audit_logs(

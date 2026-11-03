@@ -168,7 +168,7 @@ def explain_ensemble(
             raise ValueError(f"{name} has an unexpected SHAP output shape.")
 
         expected = float(expected[0])
-        prediction = np.asarray(estimator.predict(validation_transformed), dtype=float)
+        prediction = np.asarray(pipeline.predict(X_val), dtype=float)
 
         if not np.isfinite(values).all() or not np.isfinite(prediction).all():
             raise ValueError(

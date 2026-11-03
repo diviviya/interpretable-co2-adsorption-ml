@@ -133,6 +133,7 @@ def train_uploaded_dataset(dataset_path: str | Path, random_state: int = 42) -> 
         "validation_rows": int(len(X_val)),
         "test_set_evaluated": False,
         "metrics": ensemble_metrics,
+        "metrics_scope": "validation",
         "weights": weight_map,
         "individual_validation_metrics": individual_metrics,
         "validation_method": "Random 80/20 train/validation split; random_state=42",

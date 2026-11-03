@@ -328,10 +328,10 @@ function renderPrediction(data) {
                 <div class="shap-container">
                     <div class="shap-header">
                         <span style="font-weight: 750; font-size: 13px;">SHAP Feature Attribution</span>
-                        <span style="font-size: 11px; color: var(--muted);">Base: ${data.base_value || '3.49'} mmol/g</span>
+                        <span style="font-size: 11px; color: var(--muted);">Ensemble baseline: ${Number.isFinite(Number(data.base_value)) ? Number(data.base_value).toFixed(3) : '—'} mmol/g</span>
                     </div>
                     <p style="font-size: 11.5px; color: var(--muted); margin-bottom: 12px;">
-                        Exact marginal contributions driving the prediction above or below dataset average:
+                        Weighted ensemble SHAP contributions showing how each feature moves this prediction from the ensemble baseline. These are model attributions, not physical causality:
                     </p>
                     <div class="shap-list">
                         ${shap.slice(0, 5).map(item => {

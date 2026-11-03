@@ -15,17 +15,15 @@ Use the pinned package versions in `requirements.txt` when reproducing the saved
 
 ## 2. Configure local secrets
 
-Copy `backend/.env.example` to `backend/.env` and replace the placeholders:
+Copy `backend/.env.example` to `backend/.env` and fill in the values. Generate a secret in Terminal with:
 
-```env
-ENVIRONMENT=development
-JWT_SECRET=generate-a-random-secret-at-least-32-characters-long
-JWT_EXPIRATION_HOURS=24
-ADMIN_USERNAME=projectadmin
-ADMIN_PASSWORD=use-a-strong-password
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
-The `.env` file is ignored by Git. Never commit real credentials. On first startup, the backend creates the administrator specified by `ADMIN_USERNAME` and `ADMIN_PASSWORD` if that account does not already exist. Public registration always creates a normal `user` account.
+Use the generated value for `JWT_SECRET`. Set a unique `ADMIN_USERNAME` and a strong `ADMIN_PASSWORD`. Keep `ENVIRONMENT=development` locally. Never commit `backend/.env`.
+
+The `.env` file is ignored by Git. Never commit real credentials. On first startup, the backend creates the administrator specified by `ADMIN_USERNAME` and `ADMIN_PASSWORD` if that account does not already exist. Changing `ADMIN_PASSWORD` later does not reset an existing account password. Do not delete `users.json` to reset it, because that file also contains account records needed by the application. Public registration always creates a normal `user` account.
 
 ## 3. Start the application
 
@@ -65,4 +63,5 @@ The saved model artifacts were created with the versions pinned in the root requ
 - Storage is JSON-file based, suitable for a small academic demonstration, not concurrent production workloads.
 - Background training uses an in-process thread. Restarting the server interrupts an active job; a production deployment should use a durable job queue.
 - Admin candidate models are stored as joblib bundles and must be loaded with compatible Python/ML package versions.
-- Deployment still requires configuring the host's environment variables and verifying the deployed application end to end.
+- Production must use a unique `JWT_SECRET` of at least 32 characters and persistent storage.
+- The Render Blueprint in `render.yaml` configures a single Starter web service and a persistent disk. Review `DEPLOYMENT.md` before creating the service.

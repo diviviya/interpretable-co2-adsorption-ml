@@ -1,1 +1,10 @@
--r ../requirements.txt
+
+fastapi
+uvicorn[standard]
+joblib
+pandas
+numpy
+scikit-learn
+xgboost
+lightgbm
+catboost

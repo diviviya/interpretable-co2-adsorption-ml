@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Batch prediction | CarbonLab</title><link rel="stylesheet" href="css/style.css?v=carbonlab-final-20261103"></head>
+<body><header id="app-header" class="app-header"></header>
+<main class="page-shell narrow-shell">
+  <p class="eyebrow">MULTIPLE RECORDS</p><h1>Batch prediction</h1>
+  <p class="page-lead">Upload a CSV containing the model input columns to predict CO₂ uptake for multiple records.</p>
+  <section class="surface-card">
+    <h2>Upload input data</h2>
+    <p class="muted">CSV files only. Maximum file size: 15 MB. Include the required feature columns used by the prediction model.</p>
+    <form id="batch-prediction-form" class="form-stack batch-form">
+      <label class="file-field">Choose CSV file<input id="batch-csv-file" type="file" accept=".csv,text/csv" required></label>
+      <button id="btn-batch-predict" class="button-primary" type="submit">Run batch prediction <span>→</span></button>
+    </form>
+    <p id="batch-prediction-status" class="form-status" role="status"></p>
+  </section>
+  <section id="batch-prediction-result" class="batch-results" aria-live="polite"></section>
+</main>
+<script src="js/main.js?v=carbonlab-final-20261103"></script><script src="js/batch.js?v=carbonlab-final-20261103"></script></body></html>

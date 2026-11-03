@@ -26,7 +26,9 @@ If the frontend is served by this same FastAPI service, leave `CORS_ALLOWED_ORIG
 
 ## Model files
 
-The initial ensemble remains in the repository at `artifacts/deployment/co2_adsorption_ensemble.joblib`. Admin-trained candidates are written to the persistent disk and their absolute paths are stored in the model registry. On startup, the backend restores the registered active model from that path. Keep the Python and ML package versions in `requirements.txt` aligned with those used to create the serialized model artifacts.
+The initial ensemble is loaded through the portable bundle at `artifacts/deployment/portable_ensemble/co2_adsorption_ensemble.joblib`, alongside its native XGBoost JSON model and saved imputer. The model registry bootstrap and migration point the initial `v1.0-ensemble` record to this portable bundle. Admin-trained candidates are written to the persistent disk and their artifact paths are stored in the model registry. On startup, the backend restores the registered active model from that path. Keep the Python and ML package versions in `requirements.txt` aligned with those used to create the serialized model artifacts.
+
+The `/api/models` endpoint reports metadata for the currently active registry version, including its current ensemble weights and the scope of its metrics. The original v1 metrics are held-out test metrics; admin-retrained candidate metrics are validation-only and are labelled accordingly. Runtime local SHAP explanations are weighted sums of component TreeSHAP values using the active ensemble weights, with an additivity check against the actual ensemble prediction.
 
 ## Operating limits
 

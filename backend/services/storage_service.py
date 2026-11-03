@@ -25,7 +25,7 @@ STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 (STORAGE_DIR / "datasets").mkdir(parents=True, exist_ok=True)
 (STORAGE_DIR / "admin_candidates").mkdir(parents=True, exist_ok=True)
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 
 def _hash_password(password: str, salt: str | None = None) -> tuple[str, str]:
     if salt is None:
@@ -91,19 +91,45 @@ class JSONStorage:
 
             # 2. Initialize Model Versions
             models = _read_json(cls.MODELS_FILE, [])
+            portable_default = "artifacts/deployment/portable_ensemble/co2_adsorption_ensemble.joblib"
+            legacy_default = "artifacts/deployment/co2_adsorption_ensemble.joblib"
             for model in models:
-                if model.get("version") == "v1.0-ensemble" and not model.get("artifact_path"):
-                    model["artifact_path"] = "artifacts/deployment/co2_adsorption_ensemble.joblib"
+                if model.get("version") == "v1.0-ensemble" and (
+                    not model.get("artifact_path")
+                    or str(model.get("artifact_path", "")).replace("\\", "/").endswith(legacy_default)
+                ):
+                    model["artifact_path"] = portable_default
             if models:
+                # Keep exactly one registered active version after older/manual edits.
+                active_models = [model for model in models if model.get("status") == "active"]
+                if len(active_models) == 0:
+                    fallback = next((model for model in models if model.get("version") == "v1.0-ensemble"), None)
+                    if fallback and fallback.get("artifact_path"):
+                        fallback["status"] = "active"
+                        fallback.setdefault("activated_at", datetime.now(timezone.utc).isoformat())
+                        fallback.setdefault("activated_by", "system-recovery")
+                elif len(active_models) > 1:
+                    # Preserve the most recently activated active record and archive the rest.
+                    active_models.sort(key=lambda item: item.get("activated_at") or item.get("created_at") or "", reverse=True)
+                    for duplicate in active_models[1:]:
+                        duplicate["status"] = "archived"
                 _write_json(cls.MODELS_FILE, models)
             if not models:
                 models = [
                     {
                         "version": "v1.0-ensemble",
                         "name": "Validation-Optimized Weighted Ensemble",
-                        "artifact_path": "artifacts/deployment/co2_adsorption_ensemble.joblib",
+                        "artifact_path": "artifacts/deployment/portable_ensemble/co2_adsorption_ensemble.joblib",
                         "status": "active",
                         "metrics": {"R2": 0.8173, "RMSE": 0.7064, "MAE": 0.5220},
+                        "metrics_scope": "held_out_test",
+                        "dataset_filename": "Processed_527_datapoints.csv",
+                        "rows_received": 527,
+                        "rows_after_duplicate_removal": 526,
+                        "train_rows": 336,
+                        "validation_rows": 84,
+                        "test_rows": 106,
+                        "test_set_evaluated": True,
                         "weights": {
                             "CatBoost": 0.5464,
                             "LightGBM": 0.2766,
@@ -168,7 +194,7 @@ class JSONStorage:
 
     # PREDICTION HISTORY
     @classmethod
-    def record_prediction(cls, username: str | None, inputs: dict, prediction_result: float, model_version: str):
+    def record_prediction(cls, username: str | None, inputs: dict, prediction_result: float, model_version: str, prediction_type: str = "single", metadata: dict | None = None):
         with _lock:
             history = _read_json(cls.PREDICTIONS_FILE, [])
             entry = {
@@ -177,6 +203,8 @@ class JSONStorage:
                 "inputs": inputs,
                 "predicted_uptake": round(prediction_result, 4),
                 "model_version": model_version,
+                "prediction_type": prediction_type,
+                "metadata": metadata or {},
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             history.append(entry)
@@ -187,9 +215,46 @@ class JSONStorage:
     def get_predictions(cls, username: str | None = None, limit: int = 50):
         with _lock:
             history = _read_json(cls.PREDICTIONS_FILE, [])
-            if username and username != "admin":
+            if username is not None:
                 history = [h for h in history if h.get("username") == username]
             return list(reversed(history[-limit:]))
+
+    @classmethod
+    def add_dataset_metadata(cls, metadata: dict):
+        with _lock:
+            items = _read_json(cls.DATASETS_FILE, [])
+            items.append(metadata)
+            _write_json(cls.DATASETS_FILE, items)
+            return metadata
+
+    @classmethod
+    def add_model_candidate(cls, metadata: dict):
+        with _lock:
+            models = _read_json(cls.MODELS_FILE, [])
+            if any(item.get("version") == metadata.get("version") for item in models):
+                raise ValueError("This model version is already registered.")
+            models.append(metadata)
+            _write_json(cls.MODELS_FILE, models)
+            return metadata
+
+    @classmethod
+    def mark_interrupted_training_jobs(cls):
+        """Mark in-process jobs interrupted by a server restart."""
+        with _lock:
+            jobs = _read_json(cls.JOBS_FILE, [])
+            changed = False
+            for job in jobs:
+                if job.get("status") in {"pending", "running"}:
+                    job.update({
+                        "status": "failed",
+                        "stage": "interrupted",
+                        "error": "Training was interrupted because the application process restarted. Start a new training run.",
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    changed = True
+            if changed:
+                _write_json(cls.JOBS_FILE, jobs)
+            return changed
 
     # MODEL VERSIONS
     @classmethod
@@ -201,10 +266,10 @@ class JSONStorage:
     def get_active_model_version(cls):
         with _lock:
             models = _read_json(cls.MODELS_FILE, [])
-            for m in models:
-                if m.get("status") == "active":
-                    return m
-            return models[0] if models else None
+            for model in models:
+                if model.get("status") == "active":
+                    return model
+            return None
 
     @classmethod
     def activate_model_version(cls, version: str, username: str):
@@ -257,6 +322,8 @@ class JSONStorage:
     def create_training_job(cls, dataset_name: str, username: str):
         with _lock:
             jobs = _read_json(cls.JOBS_FILE, [])
+            if any(job.get("status") in {"pending", "running"} for job in jobs):
+                raise ValueError("A training job is already running. Wait for it to finish before starting another.")
             job_id = f"job-{secrets.token_hex(4)}"
             new_job = {
                 "job_id": job_id,
@@ -293,15 +360,16 @@ class JSONStorage:
     # AUDIT LOGS
     @classmethod
     def record_audit(cls, username: str, action: str, details: str):
-        logs = _read_json(cls.AUDIT_FILE, [])
-        logs.append({
-            "id": len(logs) + 1,
-            "username": username,
-            "action": action,
-            "details": details,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
-        _write_json(cls.AUDIT_FILE, logs)
+        with _lock:
+            logs = _read_json(cls.AUDIT_FILE, [])
+            logs.append({
+                "id": len(logs) + 1,
+                "username": username,
+                "action": action,
+                "details": details,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            _write_json(cls.AUDIT_FILE, logs)
 
     @classmethod
     def get_audit_logs(cls, limit: int = 50):

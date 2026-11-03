@@ -52,9 +52,7 @@ def test_predictions_match_saved_bundle_directly():
 
     expected = sum(
         predictor.weights[name]
-        * float(predictor.models[name].named_steps["model"].predict(
-            predictor.models[name].named_steps["imputer"].transform(X)
-        )[0])
+        * float(predictor.models[name].predict(X)[0])
         for name in predictor.model_order
     )
 

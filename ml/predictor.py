@@ -184,12 +184,8 @@ class CO2AdsorptionPredictor:
         individual_predictions = {}
 
         for model_name in self.model_order:
-            fitted_pipeline = self.models[model_name]
-            # Calling the fitted steps directly avoids version-specific
-            # sklearn estimator-tag checks (notably CatBoost/sklearn combos).
-            imputed = fitted_pipeline.named_steps["imputer"].transform(X)
             prediction = np.asarray(
-                fitted_pipeline.named_steps["model"].predict(imputed),
+                self.models[model_name].predict(X),
                 dtype=float,
             ).reshape(-1)
 

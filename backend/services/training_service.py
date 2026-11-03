@@ -6,6 +6,7 @@ import io
 import time
 import os
 import re
+import secrets
 import threading
 from datetime import datetime, timezone
 import pandas as pd
@@ -33,7 +34,7 @@ def validate_and_save_dataset(file_bytes: bytes, filename: str, username: str) -
     """Validate a labelled CSV and save it under a server-generated safe name."""
     if len(file_bytes) > 15 * 1024 * 1024:
         raise ValueError("Dataset exceeds the 15 MB upload limit.")
-    if not filename.lower().endswith(".csv"):
+    if not filename or not filename.lower().endswith(".csv"):
         raise ValueError("Only CSV files are supported.")
     try:
         df = pd.read_csv(io.BytesIO(file_bytes))
@@ -56,7 +57,7 @@ def validate_and_save_dataset(file_bytes: bytes, filename: str, username: str) -
         if not converted.dropna().map(lambda value: pd.notna(value) and abs(float(value)) != float('inf')).all():
             raise ValueError(f"Column '{column}' contains non-finite values.")
     safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", Path(filename).stem).strip("._") or "dataset"
-    stored_name = f"{int(time.time())}_{safe_stem}.csv"
+    stored_name = f"{int(time.time())}_{secrets.token_hex(3)}_{safe_stem}.csv"
     save_path = DATASETS_DIR / stored_name
     df.to_csv(save_path, index=False)
     metadata = {
@@ -72,10 +73,7 @@ def validate_and_save_dataset(file_bytes: bytes, filename: str, username: str) -
         "uploaded_at": datetime.now(timezone.utc).isoformat(),
         "status": "approved",
     }
-    with threading.Lock():
-        datasets_list = _read_json(JSONStorage.DATASETS_FILE, [])
-        datasets_list.append(metadata)
-        _write_json(JSONStorage.DATASETS_FILE, datasets_list)
+    JSONStorage.add_dataset_metadata(metadata)
     JSONStorage.record_audit(username, "UPLOAD_DATASET", f"Uploaded and validated dataset: {stored_name} ({len(df)} rows)")
     return metadata
 
@@ -90,9 +88,7 @@ def _run_background_training(job_id: str, dataset_name: str, username: str):
         result = train_uploaded_dataset(dataset_path)
         metadata = result["metadata"]
         JSONStorage.update_training_job(job_id, {"progress_pct": 95, "stage": "registering candidate"})
-        models = _read_json(JSONStorage.MODELS_FILE, [])
-        models.append(metadata)
-        _write_json(JSONStorage.MODELS_FILE, models)
+        JSONStorage.add_model_candidate(metadata)
         JSONStorage.update_training_job(job_id, {
             "status": "completed", "progress_pct": 100,
             "completed_at": datetime.now(timezone.utc).isoformat(),

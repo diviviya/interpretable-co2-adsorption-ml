@@ -3,52 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CO₂ Adsorption Predictor · Prediction & What-If</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>Prediction & SHAP | CarbonLab</title>
+    <link rel="stylesheet" href="css/style.css?v=carbonlab-final-20261103">
 </head>
 <body>
-    <header class="topbar">
-        <a href="index.html" class="brand">
-            <div class="logo">CO₂</div>
-            <div>
-                <b>CO₂ Adsorption Predictor</b>
-                <small>Biomass-Derived Porous Carbons &bull; Interpretable ML</small>
-            </div>
-        </a>
-        <nav>
-            <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="prediction.html" class="active">Prediction & What-If</a></li>
-                <li><a href="history.html">My History</a></li>
-                <li><a href="models.html">Models</a></li>
-                <li><a href="explainability.html">Explainability</a></li>
-                <li><a href="methodology.html">Methodology</a></li>
-            </ul>
-        </nav>
-        <div id="backend-status" class="nav-badge"><i></i> Checking System...</div>
-        <button type="button" class="nav-badge" onclick="logout()" aria-label="Log out of your account">Log out</button>
-    </header>
+    <header id="app-header" class="app-header"></header>
 
     <main>
         <section class="hero">
             <div>
-                <p class="eyebrow">PREDICTION & SCENARIO WORKSPACE</p>
-                <h1>CO₂ Uptake & What-If Analysis</h1>
-                <p class="lead">Forecast CO₂ adsorption capacity from 10 material properties, explore local SHAP attributions, or simulate what-if synthesis variations side-by-side.</p>
+                <p class="eyebrow">PREDICTION WORKSPACE</p>
+                <h1>Prediction & Explainability</h1>
+                <p class="lead">Estimate CO₂ uptake, understand the prediction with SHAP, and compare alternative input conditions.</p>
             </div>
             <div class="panel" style="padding: 14px 22px; margin-bottom: 0;">
-                <span class="eyebrow">TARGET VARIABLE</span>
-                <div style="font-size: 20px; font-weight: 800; color: var(--green);">CO₂ Uptake <small style="font-size: 13px; color: var(--muted); font-weight: 600;">(mmol/g)</small></div>
+                <span class="eyebrow">PREDICTION TARGET</span>
+                <div class="target-value">CO₂ uptake <small>(mmol/g)</small></div><div id="active-model" class="active-model">Checking active model…</div>
             </div>
         </section>
 
         <!-- SUB-PAGE TABS -->
         <div class="tab-nav">
             <button type="button" class="tab-btn active" id="tab-btn-single">
-                <span>⚡</span> Single Prediction & SHAP
+                <span>⚡</span> Single prediction
             </button>
             <button type="button" class="tab-btn" id="tab-btn-whatif">
-                <span>🔄</span> What-If Scenario Analysis
+                <span>🔄</span> What-If comparison
             </button>
         </div>
 
@@ -62,7 +42,7 @@
                     <div class="panel-header">
                         <div>
                             <h2>Material & Process Inputs</h2>
-                            <p style="font-size: 12px; color: var(--muted); margin-top: 2px;">All 10 features are processed by median imputation pipelines before inference.</p>
+                            <p style="font-size: 12px; color: var(--muted); margin-top: 2px;">Enter the material properties and operating conditions. Leave a value blank only if the model supports missing inputs.</p>
                         </div>
                         <button type="button" id="btn-example" class="light" style="height: 34px; padding: 0 12px; font-size: 12px;">Load Example</button>
                     </div>
@@ -240,11 +220,9 @@
         </div>
     </main>
 
-    <footer>
-        CO₂ Adsorption ML Project &bull; Biomass-Derived Porous Carbons &bull; Interpretable Ensemble Platform
-    </footer>
+    
 
-    <script src="js/main.js"></script>
-    <script src="js/prediction.js"></script>
+    <script src="js/main.js?v=carbonlab-final-20261103"></script>
+    <script src="js/prediction.js?v=carbonlab-final-20261103"></script>
 </body>
 </html>

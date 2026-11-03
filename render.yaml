@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: carbonlab
+    runtime: python
+    plan: starter
+    region: singapore
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+    startCommand: python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.3
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRATION_HOURS
+        value: "24"
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: CO2_DATA_DIR
+        value: /var/data
+    disk:
+      name: carbonlab-data
+      mountPath: /var/data
+      sizeGB: 1

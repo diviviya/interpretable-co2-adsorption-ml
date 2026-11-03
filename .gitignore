@@ -218,8 +218,3 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Raw research dataset (kept local)
-
-# Local secrets and all runtime state (users, history, uploaded data, model registry, candidates)
-backend/.env
-backend/storage/
-backend/storage/datasets/

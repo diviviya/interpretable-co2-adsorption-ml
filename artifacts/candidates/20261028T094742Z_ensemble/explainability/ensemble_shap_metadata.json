@@ -1,5 +1,5 @@
 {
-  "candidate_directory": "/Users/divyakandlakuti/Desktop/interpretable-co2-adsorption-ml/artifacts/candidates/20261028T094742Z_ensemble",
+  "candidate_directory": "/Users/divyakandlakuti/Desktop/interpretable-co2-adsorption-ml/interpretable-co2-adsorption-ml-publish/artifacts/candidates/20261028T094742Z_ensemble",
   "target_column": "CO2 uptake (mmol/g)",
   "prediction_unit": "mmol/g",
   "explained_split": "validation",
