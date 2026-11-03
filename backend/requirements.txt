@@ -1,0 +1,16 @@
+# Same versions the model was trained with (Notebook 09), so the saved
+# bundle loads without version errors.
+pandas==2.3.3
+numpy==2.3.5
+scikit-learn==1.7.2
+xgboost==3.4.1
+lightgbm==4.7.0
+catboost==1.2.10
+joblib==1.5.2
+shap
+
+# Web server
+fastapi
+uvicorn[standard]
+pydantic-settings
+python-multipart

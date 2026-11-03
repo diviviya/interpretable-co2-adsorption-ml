@@ -5,7 +5,7 @@
 const CONFIG = {
   // true  = use the fake responses in mock.js (no backend needed)
   // false = talk to the real FastAPI backend at API_BASE
-  USE_MOCK: true,
+  USE_MOCK: false,
 
   // Where the FastAPI backend runs. Change this when it is deployed.
   API_BASE: "http://127.0.0.1:8000",
