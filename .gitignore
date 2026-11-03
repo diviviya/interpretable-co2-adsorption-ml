@@ -22,3 +22,5 @@ Thumbs.db
 anaconda_projects/
 catboost_info/
 backend/data/
+# Secrets
+.env

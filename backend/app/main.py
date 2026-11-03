@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .routers import health, predict
+from .routers import admin, health, predict
 from .services.model_service import model_service
 from .services import history_service
 
@@ -29,3 +29,4 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(predict.router)
+app.include_router(admin.router)
