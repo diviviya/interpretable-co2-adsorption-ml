@@ -13,3 +13,5 @@ jupyter
 ipykernel
 fastapi
 uvicorn
+pydantic-settings
+python-multipart

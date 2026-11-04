@@ -7,8 +7,12 @@ const CONFIG = {
   // false = talk to the real FastAPI backend at API_BASE
   USE_MOCK: false,
 
-  // Where the FastAPI backend runs. Change this when it is deployed.
-  API_BASE: "http://127.0.0.1:8000",
+  // Where the FastAPI backend runs.
+  // Normally the backend serves these pages itself, so the API is on the
+  // SAME address as the page ("" = "this same site"). That works for
+  // localhost:8000, a teammate opening your Wi-Fi IP, and a tunnel link.
+  // Only the old two-terminal setup (pages on port 5500) needs the full URL.
+  API_BASE: location.port === "5500" ? "http://127.0.0.1:8000" : "",
 
   // Mock mode only: real project files the mocks read from your repo.
   MOCK_FEATURE_INFO_URL: "../artifacts/feature_info.json",

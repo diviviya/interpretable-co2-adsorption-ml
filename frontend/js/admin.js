@@ -1,7 +1,7 @@
 // =====================================================================
 // admin.js — dataset upload, training, and model version management.
-// Every admin request carries the admin key; the BACKEND must reject
-// requests without a valid key. This page only makes the job convenient.
+// Only reachable after logging in as an admin. Every request carries the
+// session token, and the BACKEND rejects anyone who isn't an admin.
 // =====================================================================
 
 renderNav("admin");
@@ -12,60 +12,11 @@ let chosenFile = null;
 let validated = null;   // server's validation result for the uploaded dataset
 let pollTimer = null;   // repeating check on the running training job
 
-// ---------- Login ----------
-// The key lives only in this variable: it is gone when the page closes.
-let adminKey = "";
-const key = () => adminKey;
-
-if (CONFIG.USE_MOCK) {
-  $("login-sub").textContent = "Demo mode: any key is accepted. With the real backend, the key is checked by the server and you'll need to log in again after leaving this page.";
-}
-
+// ---------- Helpers ----------
+// The admin is already logged in (admin-login.html); the session token is
+// sent automatically by api.js, and the backend checks the admin role.
 function alerts(id, items) {
   $(id).innerHTML = items.map(([kind, t]) => `<li class="${kind}">${escapeHtml(t)}</li>`).join("");
-}
-
-function showTools(loggedIn) {
-  $("login-card").hidden = loggedIn;
-  $("admin-tools").hidden = !loggedIn;
-}
-
-function logout(message) {
-  adminKey = "";
-  clearTimeout(pollTimer);
-  $("admin-key").value = "";
-  showTools(false);
-  alerts("login-alerts", message ? [["error", message]] : []);
-  $("admin-key").focus();
-}
-
-$("login-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const typed = $("admin-key").value.trim();
-  if (!typed) { alerts("login-alerts", [["error", "Enter the admin key."]]); return; }
-  const btn = $("login-btn");
-  busy(btn, "Checking…");
-  try {
-    await API.adminLogin(typed);   // the backend decides whether the key is valid
-    adminKey = typed;
-    alerts("login-alerts", []);
-    showTools(true);
-    loadVersions();
-  } catch (err) {
-    alerts("login-alerts", [["error", /authoris/i.test(err.message) ? "Invalid admin key." : err.message]]);
-  } finally {
-    idle(btn);
-  }
-});
-
-$("logout-btn").addEventListener("click", () => logout());
-
-// If the backend rejects the key later (e.g. it was changed), go back to login.
-API.onAuthError(() => logout("Your admin session was rejected by the server. Please log in again."));
-
-// Admin actions only run while logged in.
-function needKey() {
-  return !adminKey;
 }
 
 function busy(btn, label) {
@@ -121,11 +72,11 @@ drop.addEventListener("drop", (e) => {
 
 // ---------- 1b. Upload and show the server's validation ----------
 $("upload-btn").addEventListener("click", async () => {
-  if (!chosenFile || needKey()) return;
+  if (!chosenFile) return;
   const btn = $("upload-btn");
   busy(btn, "Uploading…");
   try {
-    const res = await API.uploadDataset(chosenFile, key());
+    const res = await API.uploadDataset(chosenFile);
     validated = res;
     showValidation(res);
   } catch (err) {
@@ -172,7 +123,7 @@ function updateTrainButton() {
 }
 
 $("train-btn").addEventListener("click", async () => {
-  if (!validated || needKey()) return;
+  if (!validated) return;
   const sure = confirm(`Start training on "${validated.filename}" (${validated.rows} rows)?\n\nThis can take several minutes. The active model keeps serving users until you activate the new one.`);
   if (!sure) return;
 
@@ -182,7 +133,7 @@ $("train-btn").addEventListener("click", async () => {
   $("compare").hidden = true;
   alerts("train-alerts", []);
   try {
-    const { job_id } = await API.startTraining(validated.dataset_id, key());
+    const { job_id } = await API.startTraining(validated.dataset_id);
     $("train-job").textContent = `Job ${job_id}`;
     poll(job_id);
   } catch (err) {
@@ -193,9 +144,11 @@ $("train-btn").addEventListener("click", async () => {
 
 function poll(jobId) {
   clearTimeout(pollTimer);
+  let misses = 0;   // progress checks in a row that got no reply
   const tick = async () => {
     try {
-      const s = await API.getTrainingStatus(jobId, key());
+      const s = await API.getTrainingStatus(jobId);
+      misses = 0;
       $("train-state").textContent = { queued: "Queued", running: "Training…", succeeded: "Training finished", failed: "Training failed" }[s.status] || s.status;
       $("train-bar").style.width = `${Math.round((s.progress ?? 0) * 100)}%`;
       $("train-logs").textContent = (s.logs || []).join("\n");
@@ -215,8 +168,17 @@ function poll(jobId) {
       }
       pollTimer = setTimeout(tick, 1500);
     } catch (err) {
+      // The server can be slow to answer while it trains (heavy steps keep
+      // it busy). One slow reply doesn't mean the job died: keep checking,
+      // and only give up after many misses in a row (about 1 minute).
+      misses += 1;
+      if (misses < 12) {
+        $("train-state").textContent = "Training… (server busy, still checking)";
+        pollTimer = setTimeout(tick, 5000);
+        return;
+      }
       idle($("train-btn"));
-      alerts("train-alerts", [["error", "Lost contact with the training job: " + err.message]]);
+      alerts("train-alerts", [["error", "Lost contact with the training job: " + err.message + " Click Refresh in section 3 to see if it finished."]]);
     }
   };
   tick();
@@ -225,7 +187,7 @@ function poll(jobId) {
 async function showComparison(candidate, isMock) {
   let active = null;
   try {
-    const { models } = await API.listModels(key());
+    const { models } = await API.listModels();
     active = models.find((m) => m.status === "active");
   } catch { /* show the candidate alone */ }
 
@@ -246,7 +208,7 @@ async function showComparison(candidate, isMock) {
 async function loadVersions() {
   alerts("versions-alerts", []);
   try {
-    const { models } = await API.listModels(key());
+    const { models } = await API.listModels();
     renderVersions(models);
   } catch (err) {
     $("versions-table").innerHTML = "";
@@ -276,7 +238,7 @@ function renderVersions(models) {
 
 $("versions-table").addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-act]");
-  if (!btn || needKey()) return;
+  if (!btn) return;
   const version = btn.dataset.v;
   const action = btn.dataset.act;
   const message = action === "activate"
@@ -286,7 +248,7 @@ $("versions-table").addEventListener("click", async (e) => {
 
   busy(btn, action === "activate" ? "Activating…" : "Rolling back…");
   try {
-    const res = action === "activate" ? await API.activateModel(version, key()) : await API.rollbackModel(version, key());
+    const res = action === "activate" ? await API.activateModel(version) : await API.rollbackModel(version);
     if (res && res.models) renderVersions(res.models); else await loadVersions();
     alerts("versions-alerts", [["ok", `${version} is now the active model.`]]);
   } catch (err) {
@@ -295,8 +257,7 @@ $("versions-table").addEventListener("click", async (e) => {
   }
 });
 
-$("refresh-btn").addEventListener("click", () => { if (!needKey()) loadVersions(); });
+$("refresh-btn").addEventListener("click", loadVersions);
 
-// Start on the login screen.
-showTools(false);
-$("admin-key").focus();
+$("logout-btn").addEventListener("click", logout);
+loadVersions();

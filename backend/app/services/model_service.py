@@ -4,22 +4,25 @@ model_service.py: everything that touches the trained model lives here.
 The routers (the URL handlers) never open joblib files themselves. They call
 the functions below. That keeps the ML part in one place, so if the model
 changes later, only this file changes.
+
+Which model is loaded is decided by registry_service (the "active" entry).
+load() can be called again while the server runs, to switch models.
 """
 import json
 import math
-from datetime import datetime
 
 import joblib
 import numpy as np
 import pandas as pd
 import shap
 
-from ..config import ARTIFACTS, RESULTS, settings
+from ..config import ARTIFACTS, REPO_ROOT, RESULTS
 
 
 class ModelService:
     def __init__(self):
         self.bundle = None
+        self.version: str = ""
         self.features: list[str] = []
         self.feature_info: dict = {}
         self.active_model: dict = {}
@@ -28,70 +31,42 @@ class ModelService:
         self.importance: list[dict] = []
 
     # ------------------------------------------------------------------
-    # Loading (runs once, when the server starts)
+    # Loading (at startup, and again when the admin activates a model)
     # ------------------------------------------------------------------
-    def load(self):
-        # model_bundle.joblib was saved by Notebook 09:
+    def load(self, entry: dict):
+        # A bundle is a dict saved with joblib (by Notebook 09, or by training_service):
         # {"models": {name: Pipeline(impute -> model)}, "weights": {name: w},
-        #  "features": [...10 column names...], "target": "CO2 uptake (mmol/g)"}
-        bundle_path = ARTIFACTS / "model_bundle.joblib"
+        #  "features": [...10 column names...], "target": "CO2 uptake (mmol/g)",
+        #  "importance": [...]  <- only in bundles made by the admin training}
+        bundle_path = REPO_ROOT / entry["path"]
         if not bundle_path.exists():
-            raise RuntimeError(
-                f"{bundle_path} not found. Run notebooks 07 and 09 first to create it."
-            )
-        self.bundle = joblib.load(bundle_path)
-        self.features = list(self.bundle["features"])
+            raise RuntimeError(f"{bundle_path} not found.")
+        bundle = joblib.load(bundle_path)
 
-        with open(ARTIFACTS / "feature_info.json") as f:
-            self.feature_info = json.load(f)
+        # Build everything for the new model first...
+        explainers, base_value = build_explainers(bundle)
+        importance = self._load_importance(bundle)
+        if not self.feature_info:
+            # Input ranges for the form; these come from the original data.
+            with open(ARTIFACTS / "feature_info.json") as f:
+                self.feature_info = json.load(f)
 
-        self.active_model = self._describe_active_model()
-        self._build_explainers()
-        self.importance = self._load_importance()
+        # ...then swap it all in at once, so a prediction arriving during the
+        # switch never mixes the old model with the new explainers.
+        (self.bundle, self.explainers, self.base_value, self.importance,
+         self.features, self.version, self.active_model) = (
+            bundle, explainers, base_value, importance,
+            list(bundle["features"]), entry["version"],
+            {**{k: v for k, v in entry.items() if k != "path"}, "status": "active"},
+        )
 
-    def _build_explainers(self):
-        # Same method as Notebook 08: one TreeExplainer per model (on the model
-        # step, after the imputer), then combine them with the ensemble weights.
-        models, weights = self.bundle["models"], self.bundle["weights"]
-        self.explainers = {
-            name: shap.TreeExplainer(models[name].named_steps["model"]) for name in weights
-        }
-        # base_value = the ensemble's average prediction before seeing any input.
-        # Each explainer's expected_value is that model's average; weight them.
-        def model_base(name):
-            if name == "CatBoost":
-                # shap reports 0 for CatBoost: it misses the starting value
-                # CatBoost adds to every prediction. CatBoost stores it itself.
-                return float(models[name].named_steps["model"].get_scale_and_bias()[1])
-            return float(np.ravel(self.explainers[name].expected_value)[0])
-
-        self.base_value = float(sum(w * model_base(name) for name, w in weights.items()))
-
-    def _load_importance(self) -> list[dict]:
-        # Global importance saved by Notebook 08 (mean |SHAP| over all rows).
+    def _load_importance(self, bundle) -> list[dict]:
+        # Bundles trained from the admin page carry their own importance.
+        if "importance" in bundle:
+            return bundle["importance"]
+        # The original model: global importance saved by Notebook 08.
         imp = pd.read_csv(RESULTS / "08_shap_importance.csv", index_col=0).iloc[:, 0]
         return [{"feature": f, "mean_abs_shap": round(float(v), 4)} for f, v in imp.items()]
-
-    def _describe_active_model(self) -> dict:
-        # Test metrics come from Notebook 07's saved table, not typed by hand.
-        test = pd.read_csv(RESULTS / "07_test_results.csv", index_col=0)
-        row = test.loc["Ensemble (entropy-TOPSIS)"]
-
-        clean = pd.read_csv(ARTIFACTS / "clean_data.csv")
-        n_test = int((clean["split"] == "test").sum())
-
-        # When the bundle file was saved = when this model version was made.
-        saved = datetime.fromtimestamp((ARTIFACTS / "model_bundle.joblib").stat().st_mtime)
-
-        return {
-            "version": settings.model_version,
-            "created_at": saved.astimezone().isoformat(timespec="seconds"),
-            "model_type": "Entropy-TOPSIS weighted ensemble of 6 tree models",
-            "status": "active",
-            "dataset": f"Yuan et al. (2021) biomass carbons, {len(clean)} rows",
-            "metrics": {k: round(float(row[k]), 3) for k in ("rmse", "mae", "r2")},
-            "metrics_split": f"test ({n_test} rows)",
-        }
 
     # ------------------------------------------------------------------
     # Prediction
@@ -135,6 +110,28 @@ class ModelService:
             {"feature": f, "value": features.get(f), "contribution": round(float(c), 4)}
             for f, c in zip(self.features, contrib)
         ]
+
+
+def build_explainers(bundle) -> tuple[dict, float]:
+    """Same method as Notebook 08: one TreeExplainer per model (on the model
+    step, after the imputer), combined with the ensemble weights.
+    Also used by training_service to compute importance for a new model."""
+    models, weights = bundle["models"], bundle["weights"]
+    explainers = {
+        name: shap.TreeExplainer(models[name].named_steps["model"]) for name in weights
+    }
+
+    # base_value = the ensemble's average prediction before seeing any input.
+    # Each explainer's expected_value is that model's average; weight them.
+    def model_base(name):
+        if name == "CatBoost":
+            # shap reports 0 for CatBoost: it misses the starting value
+            # CatBoost adds to every prediction. CatBoost stores it itself.
+            return float(models[name].named_steps["model"].get_scale_and_bias()[1])
+        return float(np.ravel(explainers[name].expected_value)[0])
+
+    base_value = float(sum(w * model_base(name) for name, w in weights.items()))
+    return explainers, base_value
 
 
 def is_number(x) -> bool:

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin login · CO₂ Uptake Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-page admin-auth" data-auth="admin">
+  <aside class="auth-side">
+    <a class="brand" href="index.html" id="brand"></a>
+    <svg id="side-lattice"></svg>
+    <div>
+      <h2>Model management</h2>
+      <p>Upload training data, train candidate models, and choose which version every user's predictions come from. Admin accounts only.</p>
+    </div>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-box">
+      <h1>Admin login</h1>
+      <p>Use the admin username and password set on the server.</p>
+
+      <form id="auth-form" novalidate>
+        <label for="username">Admin username</label>
+        <input type="text" id="username" autocomplete="username" required>
+
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+
+        <ul class="alerts" id="auth-alerts"></ul>
+        <button type="submit" class="btn dark wide" id="auth-btn">Log in as admin</button>
+      </form>
+
+      <p class="auth-alt">Not an admin? <a href="login.html">Normal login</a> · <a href="index.html">Back to home</a></p>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/mock.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

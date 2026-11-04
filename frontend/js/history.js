@@ -1,5 +1,5 @@
 // =====================================================================
-// history.js — Page D: previous predictions, fetched from the backend.
+// history.js — Page D: this user's previous predictions, from the backend.
 // =====================================================================
 
 renderNav("history");
@@ -14,7 +14,7 @@ async function loadHistory() {
     const res = await API.getHistory();
     const items = res.items || [];
     $("history-sub").textContent = items.length
-      ? `${items.length} prediction${items.length === 1 ? "" : "s"}${res.mock ? " (demo data, this browser tab only)" : ""}`
+      ? `Your last ${items.length} prediction${items.length === 1 ? "" : "s"}${res.mock ? " (demo data, this browser tab only)" : ""}`
       : "";
     $("history-empty").hidden = items.length > 0;
     $("history-table").hidden = items.length === 0;

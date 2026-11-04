@@ -171,7 +171,7 @@ const MOCK = (() => {
   const STAGES = [
     [0.00, "Loading dataset and checking columns"],
     [0.10, "Removing duplicates, splitting 64/16/20 with seed 42"],
-    [0.25, "Tuning 6 models with Optuna (5-fold CV)"],
+    [0.25, "Refitting 6 models with saved best params"],
     [0.70, "Computing entropy-TOPSIS ensemble weights"],
     [0.85, "Evaluating candidate on held-out test rows"],
     [0.95, "Saving candidate model"],
@@ -219,12 +219,15 @@ const MOCK = (() => {
   async function activateModel(version) { await wait(400); return makeActive(version); }
   async function rollbackModel(version) { await wait(400); return makeActive(version); }
 
-  // Demo mode accepts any non-empty key. The real backend must check it.
-  async function adminLogin(key) {
+  // Demo mode accepts any username and password. The real backend checks them.
+  async function login(username, password, admin) {
     await wait(400);
-    if (!key) throw new Error("Enter the admin key.");
-    return { ok: true, role: "admin", mock: true };
+    if (!username || !password) throw new Error("Enter a username and password.");
+    return { token: "mock-token", user: { id: 1, username, role: admin ? "admin" : "user" }, mock: true };
   }
+  async function signup(username, password) { return login(username, password, false); }
+  async function me() { await wait(100); return { user: Auth.user() }; }
+  async function logout() { return { ok: true }; }
 
   async function health() { return { status: "ok", mock: true }; }
   async function getActiveModel() {
@@ -235,6 +238,6 @@ const MOCK = (() => {
   return {
     health, getFeatureInfo, getActiveModel, getImportance, getHistory,
     predict, predictBatch,
-    adminLogin, uploadDataset, startTraining, getTrainingStatus, listModels, activateModel, rollbackModel,
+    login, signup, me, logout, uploadDataset, startTraining, getTrainingStatus, listModels, activateModel, rollbackModel,
   };
 })();

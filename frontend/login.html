@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in · CO₂ Uptake Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-page" data-auth="user">
+  <aside class="auth-side">
+    <a class="brand" href="index.html" id="brand"></a>
+    <svg id="side-lattice"></svg>
+    <div>
+      <h2>Estimate CO₂ uptake for biomass carbons</h2>
+      <p>Predict one material or a whole CSV, see which inputs drove each estimate, and keep your own prediction history.</p>
+    </div>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-box">
+      <div class="tabs" role="tablist" aria-label="Log in or create an account">
+        <button type="button" role="tab" id="tab-login" aria-selected="true">Log in</button>
+        <button type="button" role="tab" id="tab-signup" aria-selected="false">Create account</button>
+      </div>
+
+      <h1 id="auth-title">Welcome back</h1>
+      <p id="auth-sub">Log in to make predictions and see your history.</p>
+
+      <form id="auth-form" novalidate>
+        <label for="username">Username</label>
+        <input type="text" id="username" autocomplete="username" required>
+        <small class="hint" id="username-hint" hidden>3–30 characters: letters, numbers, _ . or -</small>
+
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+        <small class="hint" id="password-hint" hidden>At least 8 characters.</small>
+
+        <div id="confirm-box" hidden>
+          <label for="confirm">Repeat password</label>
+          <input type="password" id="confirm" autocomplete="new-password">
+        </div>
+
+        <ul class="alerts" id="auth-alerts"></ul>
+        <button type="submit" class="btn primary wide" id="auth-btn">Log in</button>
+      </form>
+
+      <p class="auth-alt">Managing the model? <a href="admin-login.html">Admin login</a> · <a href="index.html">Back to home</a></p>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/mock.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

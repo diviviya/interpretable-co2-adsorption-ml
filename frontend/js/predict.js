@@ -136,28 +136,88 @@ function labelFor(column) {
   return FIELDS.find((f) => f.column === column) || { label: column, unit: "" };
 }
 
+// Waterfall chart: start at the model's average (base value), then each
+// input adds or subtracts its contribution, biggest first, until we reach
+// the prediction. Bars sit on one shared mmol/g scale, so their lengths
+// can be compared directly and the last bar ends exactly at the prediction.
+function niceTicks(lo, hi, count = 5) {
+  const raw = (hi - lo) / count;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((k) => k >= raw) || raw;
+  const ticks = [];
+  for (let t = Math.ceil(lo / step) * step; t <= hi + 1e-9; t += step) ticks.push(Number(t.toFixed(6)));
+  return ticks;
+}
+
 function renderShap(res) {
   const section = $("explain");
   if (!Array.isArray(res.shap) || !res.shap.length) { section.hidden = true; return; }
   section.hidden = false;
 
   const items = [...res.shap].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
-  const biggest = Math.max(...items.map((d) => Math.abs(d.contribution)), 1e-9);
+  const base = res.base_value ?? 0;
 
-  $("shap-chart").innerHTML = items.map((d) => {
-    const f = labelFor(d.feature);
-    const side = d.contribution >= 0 ? "pos" : "neg";
-    const width = (Math.abs(d.contribution) / biggest) * 50; // half the track = largest bar
-    const shown = d.value === null || d.value === undefined ? "left blank (typical value used)" : `${fmt(d.value)} ${f.unit}`;
+  // Running total: where each bar starts and ends on the mmol/g scale.
+  let running = base;
+  const steps = items.map((d) => {
+    const start = running;
+    running += d.contribution;
+    return { ...d, start, end: running };
+  });
+
+  const points = [base, res.prediction, ...steps.flatMap((st) => [st.start, st.end])];
+  let lo = Math.min(...points), hi = Math.max(...points);
+  const pad = (hi - lo) * 0.08 || 0.1;
+  lo -= pad; hi += pad;
+  const x = (v) => ((v - lo) / (hi - lo)) * 100;
+
+  const rows = steps.map((st) => {
+    const f = labelFor(st.feature);
+    const side = st.contribution >= 0 ? "pos" : "neg";
+    const left = x(Math.min(st.start, st.end));
+    const width = Math.abs(x(st.end) - x(st.start));
+    const shown = st.value === null || st.value === undefined ? "left blank (typical value used)" : `${fmt(st.value)} ${f.unit}`;
+    const tip = `${f.label} = ${shown}: ${st.contribution >= 0 ? "raises" : "lowers"} the prediction by ${fmt(Math.abs(st.contribution))} mmol/g (from ${fmt(st.start)} to ${fmt(st.end)})`;
     return `
-      <div class="shap-row">
-        <div class="shap-name">${escapeHtml(f.label)}<small>${escapeHtml(shown)}</small></div>
-        <div class="shap-track" aria-hidden="true"><div class="shap-bar ${side}" style="width:${width}%"></div></div>
-        <div class="shap-num ${side}">${fmtSigned(d.contribution)}</div>
+      <div class="wf-row" title="${escapeHtml(tip)}">
+        <div class="wf-name">${escapeHtml(f.label)}<small>${escapeHtml(shown)}</small></div>
+        <div class="wf-track"><span class="wf-bar ${side}" style="left:${left}%;width:${width}%"></span></div>
+        <div class="wf-num">${fmtSigned(st.contribution)}</div>
       </div>`;
   }).join("");
 
-  const total = items.reduce((s, d) => s + d.contribution, 0);
+  const ticks = niceTicks(lo, hi).map((t) => `<span style="left:${x(t)}%">${fmt(t, 2)}</span>`).join("");
+
+  $("shap-chart").innerHTML = `
+    <div class="wf" style="--base:${x(base)}%" role="img" aria-label="Waterfall chart: model average ${fmt(base)} plus each input's contribution gives the prediction ${fmt(res.prediction)} mmol/g. The same numbers are in the table below.">
+      <div class="wf-row wf-ref">
+        <div class="wf-name">Model average<small>before looking at any input</small></div>
+        <div class="wf-track"><span class="wf-tick" style="left:${x(base)}%"></span></div>
+        <div class="wf-num">${fmt(base)}</div>
+      </div>
+      ${rows}
+      <div class="wf-row wf-total">
+        <div class="wf-name">Prediction</div>
+        <div class="wf-track"><span class="wf-tick" style="left:${x(res.prediction)}%"></span></div>
+        <div class="wf-num">${fmt(res.prediction)}</div>
+      </div>
+      <div class="wf-axis"><div></div><div class="wf-axis-track">${ticks}</div><div></div></div>
+      <div class="wf-axis"><div class="wf-axis-label">CO₂ uptake (mmol/g)</div></div>
+    </div>`;
+
+  // The same numbers as a table, for screen readers and anyone who prefers it.
+  $("shap-table").innerHTML = `<table>
+    <thead><tr><th>Input</th><th class="num">Value</th><th class="num">Contribution (mmol/g)</th><th class="num">Running total</th></tr></thead>
+    <tbody>
+      <tr><td>Model average</td><td class="num">–</td><td class="num">–</td><td class="num">${fmt(base)}</td></tr>
+      ${steps.map((st) => {
+        const f = labelFor(st.feature);
+        return `<tr><td>${escapeHtml(f.label)}</td><td class="num">${st.value == null ? "blank" : escapeHtml(fmt(st.value) + " " + f.unit)}</td><td class="num">${fmtSigned(st.contribution)}</td><td class="num">${fmt(st.end)}</td></tr>`;
+      }).join("")}
+      <tr><td><strong>Prediction</strong></td><td class="num"></td><td class="num"></td><td class="num"><strong>${fmt(res.prediction)}</strong></td></tr>
+    </tbody></table>`;
+
+  const total = items.reduce((sum, d) => sum + d.contribution, 0);
   $("shap-sum").innerHTML = res.base_value !== undefined
     ? `Model average <strong>${fmt(res.base_value)}</strong> ${total >= 0 ? "+" : "−"} contributions <strong>${fmt(Math.abs(total))}</strong> = prediction <strong>${fmt(res.prediction)}</strong> mmol/g`
     : "";

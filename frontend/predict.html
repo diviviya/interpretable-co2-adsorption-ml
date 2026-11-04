@@ -4,9 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Predict · CO₂ Uptake Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body data-protected="user">
   <header class="site-nav" id="site-nav"></header>
 
   <main class="wrap">
@@ -60,12 +62,16 @@
     <!-- Page B part 2: the SHAP explanation -->
     <section class="card" id="explain" hidden>
       <h2>Why the model predicted this</h2>
-      <p class="sub">Each bar shows how much one input moved this prediction away from the model's average.</p>
+      <p class="sub">Read from the top: the model starts at its average prediction, then each input pushes the estimate up or down, biggest effect first, until it reaches this prediction. Hover a bar for details.</p>
       <div class="shap-legend">
-        <span><span class="swatch pos"></span>Pushes uptake up</span>
-        <span><span class="swatch neg"></span>Pushes uptake down</span>
+        <span><span class="swatch pos"></span>Raises the estimate</span>
+        <span><span class="swatch neg"></span>Lowers the estimate</span>
       </div>
       <div id="shap-chart"></div>
+      <details class="as-table">
+        <summary>Show these numbers as a table</summary>
+        <div class="table-wrap" id="shap-table"></div>
+      </details>
       <p class="shap-sum" id="shap-sum"></p>
       <div class="callout" id="shap-text"></div>
       <p class="note">These contributions describe how <em>the model</em> reached its number. They are not proof that changing an input would change real-world CO₂ uptake by that amount.</p>
@@ -75,9 +81,9 @@
   <footer class="foot wrap" id="foot"></footer>
 
   <script src="js/config.js"></script>
-  <script src="js/common.js"></script>
   <script src="js/mock.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/common.js"></script>
   <script src="js/predict.js"></script>
 </body>
 </html>

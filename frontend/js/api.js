@@ -2,6 +2,9 @@
 // api.js — every call to the backend goes through this file.
 // Pages never call fetch() themselves; they call API.something().
 // In mock mode each function hands the job to MOCK (mock.js) instead.
+//
+// Logged-in requests carry the session token automatically
+// ("Authorization: Bearer <token>"), so pages don't deal with it.
 // =====================================================================
 
 const API = (() => {
@@ -20,8 +23,11 @@ const API = (() => {
     return String(detail);
   }
 
-  // One shared helper for every request: timeout, JSON, readable errors.
-  async function request(path, { method = "GET", body, form, adminKey } = {}) {
+  // Requests where a 401 means "wrong password", not "session expired".
+  const AUTH_FORMS = ["/api/auth/login", "/api/auth/signup"];
+
+  // One shared helper for every request: token, timeout, JSON, readable errors.
+  async function request(path, { method = "GET", body, form } = {}) {
     const headers = {};
     let payload;
     if (form) {
@@ -30,7 +36,8 @@ const API = (() => {
       headers["Content-Type"] = "application/json";
       payload = JSON.stringify(body);
     }
-    if (adminKey) headers["Authorization"] = "Bearer " + adminKey;
+    const token = Auth.token();
+    if (token) headers["Authorization"] = "Bearer " + token;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT_MS);
@@ -49,33 +56,41 @@ const API = (() => {
     try { data = await res.json(); } catch { /* empty or non-JSON reply */ }
 
     if (!res.ok) {
-      if (res.status === 401 || res.status === 403) {
-        if (authErrorHandler && !path.endsWith("/login")) authErrorHandler();
-        throw new Error("Not authorised. Check the admin key.");
+      const message = readableDetail(data && (data.detail || data.message)) || `Server error (${res.status}).`;
+      // Session missing or expired on a protected page: back to the login page.
+      if (res.status === 401 && !AUTH_FORMS.includes(path)) {
+        Auth.clear();
+        const need = document.body.dataset.protected;
+        if (need) location.replace(loginPageFor(need));
       }
-      throw new Error(readableDetail(data && (data.detail || data.message)) || `Server error (${res.status}).`);
+      const error = new Error(message);
+      error.status = res.status;
+      throw error;
     }
     return data;
   }
 
   const m = () => CONFIG.USE_MOCK;
 
-  // The admin page registers a function to run when the server rejects the key.
-  let authErrorHandler = null;
-
   return {
-    onAuthError: (fn) => { authErrorHandler = fn; },
+    // ---- accounts ----
+    signup: (username, password) =>
+      m() ? MOCK.signup(username, password) : request("/api/auth/signup", { method: "POST", body: { username, password } }),
+    login: (username, password, admin = false) =>
+      m() ? MOCK.login(username, password, admin) : request("/api/auth/login", { method: "POST", body: { username, password, admin } }),
+    me:     () => m() ? MOCK.me()     : request("/api/auth/me"),
+    logout: () => m() ? MOCK.logout() : request("/api/auth/logout", { method: "POST" }),
 
-    // ---- user side ----
-    health:          ()         => m() ? MOCK.health()          : request("/api/health"),
-    getFeatureInfo:  ()         => m() ? MOCK.getFeatureInfo()  : request("/api/features"),
-    getActiveModel:  ()         => m() ? MOCK.getActiveModel()  : request("/api/models/active"),
-    getImportance:   ()         => m() ? MOCK.getImportance()   : request("/api/models/active/importance"),
-    getHistory:      ()         => m() ? MOCK.getHistory()      : request("/api/predictions/history"),
+    // ---- public model info ----
+    health:          () => m() ? MOCK.health()          : request("/api/health"),
+    getFeatureInfo:  () => m() ? MOCK.getFeatureInfo()  : request("/api/features"),
+    getActiveModel:  () => m() ? MOCK.getActiveModel()  : request("/api/models/active"),
+    getImportance:   () => m() ? MOCK.getImportance()   : request("/api/models/active/importance"),
 
+    // ---- logged-in users ----
+    getHistory: () => m() ? MOCK.getHistory() : request("/api/predictions/history"),
     predict: (features) =>
       m() ? MOCK.predict(features) : request("/api/predict", { method: "POST", body: { features } }),
-
     predictBatch: (file) => {
       if (m()) return MOCK.predictBatch(file);
       const form = new FormData();
@@ -83,28 +98,25 @@ const API = (() => {
       return request("/api/predict/batch", { method: "POST", form });
     },
 
-    // ---- admin side (backend must check the key on every call) ----
-    adminLogin: (adminKey) =>
-      m() ? MOCK.adminLogin(adminKey) : request("/api/admin/login", { method: "POST", adminKey }),
-    uploadDataset: (file, adminKey) => {
+    // ---- admins (the backend checks the role on every call) ----
+    uploadDataset: (file) => {
       if (m()) return MOCK.uploadDataset(file);
       const form = new FormData();
       form.append("file", file);
-      return request("/api/admin/datasets", { method: "POST", form, adminKey });
+      return request("/api/admin/datasets", { method: "POST", form });
     },
-    startTraining: (datasetId, adminKey) =>
+    startTraining: (datasetId) =>
       m() ? MOCK.startTraining(datasetId)
-          : request("/api/admin/train", { method: "POST", body: { dataset_id: datasetId }, adminKey }),
-    getTrainingStatus: (jobId, adminKey) =>
+          : request("/api/admin/train", { method: "POST", body: { dataset_id: datasetId } }),
+    getTrainingStatus: (jobId) =>
       m() ? MOCK.getTrainingStatus(jobId)
-          : request(`/api/admin/training/${encodeURIComponent(jobId)}`, { adminKey }),
-    listModels: (adminKey) =>
-      m() ? MOCK.listModels() : request("/api/admin/models", { adminKey }),
-    activateModel: (version, adminKey) =>
+          : request(`/api/admin/training/${encodeURIComponent(jobId)}`),
+    listModels: () => m() ? MOCK.listModels() : request("/api/admin/models"),
+    activateModel: (version) =>
       m() ? MOCK.activateModel(version)
-          : request(`/api/admin/models/${encodeURIComponent(version)}/activate`, { method: "POST", adminKey }),
-    rollbackModel: (version, adminKey) =>
+          : request(`/api/admin/models/${encodeURIComponent(version)}/activate`, { method: "POST" }),
+    rollbackModel: (version) =>
       m() ? MOCK.rollbackModel(version)
-          : request(`/api/admin/models/${encodeURIComponent(version)}/rollback`, { method: "POST", adminKey }),
+          : request(`/api/admin/models/${encodeURIComponent(version)}/rollback`, { method: "POST" }),
   };
 })();

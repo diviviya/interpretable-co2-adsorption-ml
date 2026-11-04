@@ -1,13 +1,14 @@
 """
 predict.py: the URLs the user-side pages call.
 
-Each function is short on purpose: check input (done by the schema),
-call the model service, return JSON.
+Model information (features, active model, importance) is public, so the
+landing and About pages can show it before anyone logs in. Predicting and
+history need a logged-in account.
 """
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-from ..config import settings
 from ..schemas import PredictRequest, PredictResponse
+from ..security import current_user
 from ..services import batch_service, history_service
 from ..services.model_service import model_service
 
@@ -27,19 +28,19 @@ def active_model():
 
 @router.get("/models/active/importance")
 def importance():
-    # Global feature importance for the About page (from Notebook 08).
-    return {"model_version": settings.model_version, "importance": model_service.importance}
+    # Global feature importance for the About page (of the active model).
+    return {"model_version": model_service.version, "importance": model_service.importance}
 
 
 @router.post("/predict", response_model=PredictResponse, response_model_exclude_none=True)
-def predict(req: PredictRequest):
+def predict(req: PredictRequest, user: dict = Depends(current_user)):
     prediction = model_service.predict_one(req.features)
-    history_service.add_prediction(req.features, round(prediction, 4), settings.model_version)
+    history_service.add_prediction(user["id"], req.features, round(prediction, 4), model_service.version)
     # No range warnings here: predict.js already warns about out-of-range
     # inputs, and sending them from both sides would show each one twice.
     return PredictResponse(
         prediction=round(prediction, 4),
-        model_version=settings.model_version,
+        model_version=model_service.version,
         base_value=round(model_service.base_value, 4),
         shap=model_service.explain_one(req.features),
         # explanation stays empty: predict.js writes the sentence from the numbers.
@@ -47,15 +48,15 @@ def predict(req: PredictRequest):
 
 
 @router.get("/predictions/history")
-def history():
-    # Newest first, at most 50. Used by the History page.
-    return {"items": history_service.list_recent()}
+def history(user: dict = Depends(current_user)):
+    # This user's predictions only, newest first, at most 50.
+    return {"items": history_service.list_recent(user["id"])}
 
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024   # 5 MB, same limit as the frontend
 
 
-@router.post("/predict/batch")
+@router.post("/predict/batch", dependencies=[Depends(current_user)])
 def predict_batch(file: UploadFile = File(...)):
     raw = file.file.read()
     if len(raw) > MAX_UPLOAD_BYTES:
@@ -79,4 +80,4 @@ def predict_batch(file: UploadFile = File(...)):
             for (row_no, features), p in zip(good, predictions)
         ]
 
-    return {"model_version": settings.model_version, "rows": rows, "errors": errors}
+    return {"model_version": model_service.version, "rows": rows, "errors": errors}

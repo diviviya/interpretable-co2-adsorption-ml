@@ -4,32 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin · CO₂ Uptake Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="admin">
+<body class="admin" data-protected="admin">
   <header class="site-nav" id="site-nav"></header>
 
   <main class="wrap">
-    <!-- Login: shown until the backend accepts the key -->
-    <section class="card login" id="login-card">
-      <h2>Admin login</h2>
-      <p class="sub" id="login-sub">Enter the admin key to manage models. The backend checks the key; you'll need to log in again after leaving this page.</p>
-      <form id="login-form" novalidate>
-        <label for="admin-key">Admin key</label>
-        <input type="password" id="admin-key" autocomplete="current-password" placeholder="Admin key">
-        <ul class="alerts" id="login-alerts"></ul>
-        <div class="actions" style="margin-top:14px">
-          <button type="submit" class="btn primary" id="login-btn">Log in</button>
-          <a class="btn ghost" href="index.html">Back to start</a>
-        </div>
-      </form>
-    </section>
-
-    <!-- Admin tools: hidden until logged in -->
-    <div id="admin-tools" hidden>
+    <div id="admin-tools">
     <div class="page-head page-head-row">
       <div>
-        <h1>Model management</h1>
+        <h1>Model management<span class="admin-tag">Admin</span></h1>
         <p>Upload a training dataset, train a new candidate model, compare it with the active one, and choose which version the site uses.</p>
       </div>
       <button type="button" class="btn ghost" id="logout-btn">Log out</button>
@@ -97,9 +83,9 @@
   </main>
 
   <script src="js/config.js"></script>
-  <script src="js/common.js"></script>
   <script src="js/mock.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/common.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

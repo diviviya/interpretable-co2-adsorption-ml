@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CO₂ Uptake Predictor</title>
+  <title>CO₂ Uptake Predictor · Biomass-derived porous carbons</title>
+  <meta name="description" content="Estimate the CO₂ uptake of biomass-derived porous carbons with an interpretable ensemble model, and see which inputs drove each estimate.">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -11,48 +14,106 @@
 
   <main class="wrap">
     <section class="hero">
-      <p class="eyebrow">Interpretable machine learning · Biomass-derived porous carbons</p>
-      <h1>How much CO₂ will this carbon capture?</h1>
-      <p>Predict the CO₂ uptake of a porous carbon from its structure, composition and test conditions, and see which inputs drove the prediction.</p>
+      <div>
+        <h1>Know a carbon's CO₂ uptake before you test it</h1>
+        <p class="hero-lede">Enter a biomass-derived porous carbon's surface area, composition and test conditions. An ensemble of six tree models estimates how much CO₂ it adsorbs, in mmol/g, and shows which inputs drove the number.</p>
+        <div class="actions" id="hero-actions"></div>
+      </div>
+      <figure style="margin:0">
+        <svg class="hero-art" id="hero-lattice"></svg>
+        <figcaption class="hero-caption">A carbon sheet holding CO₂ in its pores (illustration)</figcaption>
+      </figure>
     </section>
 
-    <div class="choices">
-      <a class="choice" href="predict.html">
-        <span class="choice-tag">For everyone</span>
-        <h2>Use the predictor</h2>
-        <ul>
-          <li>Predict one material and see a SHAP explanation</li>
-          <li>Upload a CSV to predict many at once</li>
-          <li>Read how the model works and how accurate it is</li>
-        </ul>
-        <span class="btn primary">Start predicting →</span>
-      </a>
-
-      <a class="choice choice-admin" href="admin.html">
-        <span class="choice-tag">Admins only</span>
-        <h2>Manage the model</h2>
-        <ul>
-          <li>Upload new training data</li>
-          <li>Train and compare candidate models</li>
-          <li>Activate or roll back model versions</li>
-        </ul>
-        <span class="btn dark">Admin login →</span>
-      </a>
+    <div class="uses">
+      <div class="use">
+        <svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="5" width="24" height="24" rx="4"/><path d="M11 13h12M11 18h8M11 23h5"/></svg>
+        <h3>Predict one material</h3>
+        <p>Ten inputs, one estimate. Every field is checked against the range of the training data.</p>
+      </div>
+      <div class="use">
+        <svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 4h13l6 6v20H8z"/><path d="M21 4v6h6M12 17h11M12 21h11M12 25h7"/></svg>
+        <h3>Predict a whole CSV</h3>
+        <p>Upload up to 5,000 rows and download the predictions as a new CSV.</p>
+      </div>
+      <div class="use">
+        <svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 9h8M9 15h10M15 21h7M19 27h10"/><path d="M5 5v24" stroke-dasharray="2 3"/></svg>
+        <h3>See why</h3>
+        <p>A SHAP waterfall shows how much each input moved the estimate up or down.</p>
+      </div>
     </div>
 
-    <p class="muted center" id="model-line"></p>
+    <section class="section">
+      <h2>How the model was built</h2>
+      <p class="lede">The method follows Fan et al. (2026), first developed for MgO sorbents, applied here to biomass-derived porous carbons.</p>
+      <ol class="pipeline">
+        <li><h3>Clean and split</h3><p>527 published experiments (Yuan et al., 2021). One duplicate removed, then split 336 / 84 / 106 into training, validation and a locked test set.</p></li>
+        <li><h3>Six tree models</h3><p>Random Forest, Extra Trees, Gradient Boosting, XGBoost, LightGBM and CatBoost, each tuned with Optuna.</p></li>
+        <li><h3>Entropy-TOPSIS weights</h3><p>The models are ranked on several error measures at once, and better models get a larger share of the final average.</p></li>
+        <li><h3>SHAP explanations</h3><p>Every prediction is split into one contribution per input, starting from the model's average.</p></li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>The model in use</h2>
+      <p class="lede">These numbers are read live from the server, so they change if an admin activates a new model.</p>
+      <div class="model-sheet" id="model-sheet">
+        <dl>
+          <dt>Version</dt><dd id="m-version">–</dd>
+          <dt>Type</dt><dd id="m-type">–</dd>
+          <dt>Trained on</dt><dd id="m-data">–</dd>
+          <dt>Scored on</dt><dd id="m-split">–</dd>
+        </dl>
+        <div class="scores">
+          <div class="score"><b id="m-rmse">–</b><span>RMSE, mmol/g</span></div>
+          <div class="score"><b id="m-mae">–</b><span>MAE, mmol/g</span></div>
+          <div class="score"><b id="m-r2">–</b><span>R², variation explained</span></div>
+        </div>
+        <p class="note">Scores come from test rows the model never saw while it was trained or tuned. Lower RMSE and MAE are better; R² closer to 1 is better. Read the <a href="about.html">About page</a> for limitations before relying on a prediction.</p>
+      </div>
+    </section>
+
+    <section class="cta-band" id="cta-band">
+      <div>
+        <h2>Make your first prediction</h2>
+        <p>Create a free account. Your predictions are saved to your own history.</p>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="login.html?mode=signup">Create an account</a>
+        <a class="btn ghost" href="login.html">Log in</a>
+      </div>
+    </section>
   </main>
 
+  <footer class="foot wrap">References: Fan et al. (2026), <em>Environmental Research</em>; Yuan et al. (2021), biomass-derived porous carbon CO₂ adsorption dataset.</footer>
+
   <script src="js/config.js"></script>
-  <script src="js/common.js"></script>
   <script src="js/mock.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/common.js"></script>
   <script>
-    // Start page: just the navigation and a line naming the model in use.
+    // Landing page: public. Buttons depend on whether you're logged in.
     renderNav("home");
-    API.getActiveModel()
-      .then((m) => { $("model-line").textContent = `Model in use: ${m.version} · ${m.model_type}`; })
-      .catch(() => { /* leave the line empty if the backend is down */ });
+    drawLattice($("hero-lattice"), { cols: 9, rows: 6, size: 28, seed: 11 });
+
+    const user = Auth.user();
+    $("hero-actions").innerHTML = user
+      ? `<a class="btn primary" href="predict.html">Open the predictor</a><a class="btn ghost" href="batch.html">Predict a CSV</a>`
+      : `<a class="btn primary" href="login.html?mode=signup">Create an account</a><a class="btn ghost" href="login.html">Log in</a>`;
+    $("cta-band").hidden = !!user;
+
+    API.getActiveModel().then((m) => {
+      $("m-version").textContent = m.version;
+      $("m-type").textContent = m.model_type;
+      $("m-data").textContent = m.dataset;
+      $("m-split").textContent = m.metrics_split || "held-out test rows";
+      const k = m.metrics || {};
+      $("m-rmse").textContent = fmt(k.rmse);
+      $("m-mae").textContent = fmt(k.mae);
+      $("m-r2").textContent = fmt(k.r2);
+    }).catch(() => {
+      $("m-version").textContent = "Couldn't reach the server";
+    });
   </script>
 </body>
 </html>

@@ -4,13 +4,14 @@ Plain HTML, CSS and JavaScript. No build step, no frameworks. The frontend does 
 
 ## Run it
 
-From the **repo root** (the folder that contains `frontend/` and `artifacts/`):
+The FastAPI backend serves these pages itself. From the repo root:
 
 ```
-python -m http.server 5500
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Open http://localhost:5500/frontend/
+Open http://127.0.0.1:8000/ (or share it with a Cloudflare Tunnel link).
+For demo mode without the backend: `python -m http.server 5500` and open http://localhost:5500/frontend/.
 
 Don't open the HTML files by double-clicking them. Demo mode reads `artifacts/feature_info.json` and `results/08_shap_importance.csv`, and browsers block that for pages opened as files.
 
@@ -29,16 +30,18 @@ In demo mode the **feature ranges, global SHAP importance and the active model's
 
 | File | Purpose |
 |---|---|
-| `index.html` | Start page: choose the predictor or admin login |
+| `index.html` | Public landing page: what the tool does, how the model was built, live model scores |
+| `login.html` + `js/login.js` | Log in / create a user account |
+| `admin-login.html` + `js/login.js` | Admin login (admin accounts only) |
 | `predict.html` + `js/predict.js` | Prediction form, result, per-prediction SHAP chart |
 | `batch.html` + `js/batch.js` | CSV upload, results table, CSV download |
 | `history.html` + `js/history.js` | Past predictions (from the backend) |
 | `about.html` + `js/about.js` | Purpose, method, live metrics, global importance, limitations |
-| `admin.html` + `js/admin.js` | Admin login, then dataset upload, training, model versions |
+| `admin.html` + `js/admin.js` | Dataset upload, training, model versions (admins only) |
 | `js/config.js` | Settings and the list of the 10 inputs |
 | `js/api.js` | Every backend call (pages never call `fetch` directly) |
 | `js/mock.js` | Fake backend for demo mode |
-| `js/common.js` | Navigation, CSV parsing, formatting helpers |
+| `js/common.js` | Login state, page guard, navigation, lattice illustration, CSV and formatting helpers |
 | `css/style.css` | All styles |
 
 ## API contract (proposed: confirm with the backend teammate)
@@ -106,19 +109,31 @@ Multipart form, field `file` (CSV). Response:
                "prediction": 2.91, "features": { "Surface Area (m2/g)": 1500 } } ] }
 ```
 
-### Admin endpoints
-All need the header `Authorization: Bearer <admin key>`. **The backend must check it**; the page hiding buttons is not security. Reply `401`/`403` when the key is wrong.
+### Accounts
+Logged-in requests send `Authorization: Bearer <session token>` (added automatically by `api.js`).
+Pages with `<body data-protected="user">` or `"admin"` send visitors without a valid session to the login page.
 
 | Endpoint | Request | Response |
 |---|---|---|
-| `POST /api/admin/login` | (key in the header) | `{ ok: true, role: "admin" }`, or `401` if the key is wrong |
+| `POST /api/auth/signup` | `{ username, password }` | `{ token, user: {id, username, role} }` (creates a normal user) |
+| `POST /api/auth/login` | `{ username, password, admin? }` | `{ token, user }`; `401` wrong details, `403` if `admin: true` and the account isn't an admin |
+| `GET /api/auth/me` | | `{ user }`, or `401` if the session ended |
+| `POST /api/auth/logout` | | `{ ok: true }` |
+
+Predict, batch and history need a logged-in user (history shows only your own predictions).
+The admin account comes from `ADMIN_USERNAME` / `ADMIN_PASSWORD` in `backend/.env`.
+
+### Admin endpoints
+All need an admin session. The backend checks the role on every call and replies `401`/`403` otherwise.
+
+| Endpoint | Request | Response |
+|---|---|---|
 | `POST /api/admin/datasets` | multipart `file` | `{ dataset_id, filename, rows, columns: [...], missing_values: {col: n}, duplicate_rows, errors: [...] }` |
 | `POST /api/admin/train` | `{ "dataset_id": "..." }` | `{ job_id }` |
-| `GET /api/admin/training/{job_id}` | | `{ job_id, status: "queued"\|"running"\|"succeeded"\|"failed", progress: 0–1, logs: [...], candidate?: <model>, error?: "..." }` |
-| `GET /api/admin/models` | | `{ models: [<model>, ...] }` (same shape as `/api/models/active`, `status` = `active`/`candidate`/`previous`) |
-| `POST /api/admin/models/{version}/activate` | | `{ models: [...] }` (updated list) |
+| `GET /api/admin/training/{job_id}` | | `{ job_id, status, progress: 0–1, logs: [...], candidate?, error? }` |
+| `GET /api/admin/models` | | `{ models: [...] }` (`status` = `active`/`candidate`/`previous`) |
+| `POST /api/admin/models/{version}/activate` | | `{ models: [...] }` |
 | `POST /api/admin/models/{version}/rollback` | | `{ models: [...] }` |
 
 Errors from any endpoint: a non-2xx status with FastAPI's usual `{ "detail": ... }` body. The page shows the detail text.
 
-The backend must also allow the frontend's origin with CORS (FastAPI's `CORSMiddleware`), e.g. `http://localhost:5500`.
