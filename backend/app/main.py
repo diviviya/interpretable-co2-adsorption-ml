@@ -19,6 +19,8 @@ async def lifespan(app: FastAPI):
     auth_service.init_db()
     # Create/update the admin account from backend/.env and say so in the terminal.
     print("[startup]", auth_service.ensure_admin())
+    for line in auth_service.ensure_file_users():
+        print("[startup]", line)
     model_service.load(registry_service.active_entry())
     yield
 

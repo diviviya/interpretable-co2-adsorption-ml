@@ -22,8 +22,12 @@ import secrets
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-from ..config import settings
+from ..config import REPO_ROOT, settings
 from .history_service import DB_PATH
+
+# Your private list of team accounts (not in GitHub). Format: one account per
+# line, "username password", optionally followed by "admin".
+USERS_FILE = REPO_ROOT / "backend" / "users.txt"
 
 PBKDF2_ROUNDS = 260_000
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,30}$")
@@ -158,6 +162,109 @@ def ensure_admin() -> str:
     finally:
         conn.close()
     return f"Admin account '{name}' is ready."
+
+
+def ensure_file_users() -> list[str]:
+    """Create or update every account listed in backend/users.txt.
+
+    Runs at every startup, so the same usernames and passwords work again on
+    any computer or server you copy the project (and this file) to.
+    - New name in the file   -> account created (role "user", or "admin" if marked)
+    - Existing account       -> password set to the one in the file
+    - Marked "admin"         -> made admin. Not marked -> role left as it is,
+                                so promotions from the Admin page are kept.
+    - Name removed from file -> account is kept (delete nothing by accident).
+    Returns one line per problem/summary for the startup log."""
+    if not USERS_FILE.exists():
+        return []
+    messages, created, updated = [], 0, 0
+    conn = _connect()
+    try:
+        for line_no, raw in enumerate(USERS_FILE.read_text(encoding="utf-8-sig").splitlines(), start=1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue                      # blank lines and comments
+            parts = line.split()
+            if len(parts) not in (2, 3) or (len(parts) == 3 and parts[2].lower() != "admin"):
+                messages.append(f"users.txt line {line_no}: expected 'username password' or 'username password admin', skipped.")
+                continue
+            username, password = parts[0], parts[1]
+            make_admin = len(parts) == 3
+            problem = check_new_account(username, password)
+            if problem:
+                messages.append(f"users.txt line {line_no} ({username}): {problem} Skipped.")
+                continue
+            if _is_main_admin(username):
+                messages.append(f"users.txt line {line_no}: {username} is the main admin from .env, skipped.")
+                continue
+            row = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+            if row:
+                conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(password), row["id"]))
+                if make_admin:
+                    conn.execute("UPDATE users SET role = 'admin' WHERE id = ?", (row["id"],))
+                updated += 1
+            else:
+                conn.execute(
+                    "INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
+                    (username, hash_password(password), "admin" if make_admin else "user",
+                     _now().isoformat(timespec="seconds")),
+                )
+                created += 1
+        conn.commit()
+    finally:
+        conn.close()
+    messages.append(f"users.txt: {created} account(s) created, {updated} updated.")
+    return messages
+
+
+# ----------------------------------------------------------------------
+# Managing users (admin page)
+# ----------------------------------------------------------------------
+def _is_main_admin(username: str) -> bool:
+    # The account from backend/.env. It always stays admin, so the site
+    # can never end up with nobody able to manage it.
+    return bool(settings.admin_username) and username.lower() == settings.admin_username.strip().lower()
+
+
+def list_users() -> list[dict]:
+    conn = _connect()
+    try:
+        rows = conn.execute("""
+            SELECT u.id, u.username, u.role, u.created_at, COUNT(p.id) AS predictions
+            FROM users u LEFT JOIN predictions p ON p.user_id = u.id
+            GROUP BY u.id ORDER BY u.role = 'admin' DESC, u.username COLLATE NOCASE
+        """).fetchall()
+    finally:
+        conn.close()
+    return [{"id": r["id"], "username": r["username"], "role": r["role"],
+             "created_at": r["created_at"], "predictions": r["predictions"],
+             "main_admin": _is_main_admin(r["username"])} for r in rows]
+
+
+def set_role(user_id: int, role: str, acting_user_id: int) -> None:
+    """Make someone an admin or a normal user. Raises ValueError with a
+    message the page can show if the change isn't allowed."""
+    if role not in ("admin", "user"):
+        raise ValueError("Role must be 'admin' or 'user'.")
+    if user_id == acting_user_id:
+        raise ValueError("You can't change your own role. Ask another admin.")
+    conn = _connect()
+    try:
+        row = conn.execute("SELECT username, role FROM users WHERE id = ?", (user_id,)).fetchone()
+        if row is None:
+            raise LookupError("No such user.")
+        if role == "user" and _is_main_admin(row["username"]):
+            raise ValueError("The main admin (set in backend/.env) always stays an admin.")
+        if role == "user" and row["role"] == "admin":
+            admins = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'").fetchone()[0]
+            if admins <= 1:
+                raise ValueError("There must always be at least one admin.")
+        conn.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+    # No need to log them out: every request reads the role fresh from the
+    # database (user_for_token), so the change applies on their next click.
 
 
 # ----------------------------------------------------------------------

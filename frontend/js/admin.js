@@ -259,5 +259,61 @@ $("versions-table").addEventListener("click", async (e) => {
 
 $("refresh-btn").addEventListener("click", loadVersions);
 
+// ---------- 4. Users and admins ----------
+async function loadUsers() {
+  alerts("users-alerts", []);
+  try {
+    const { users } = await API.listUsers();
+    renderUsers(users);
+  } catch (err) {
+    $("users-table").innerHTML = "";
+    alerts("users-alerts", [["error", err.message]]);
+  }
+}
+
+function renderUsers(users) {
+  const me = Auth.user() || {};
+  $("users-table").innerHTML = `<table>
+    <thead><tr><th>Username</th><th>Role</th><th>Joined</th><th class="num">Predictions</th><th></th></tr></thead>
+    <tbody>${users.map((u) => {
+      const isMe = u.id === me.id || u.username === me.username;
+      let action = "";
+      if (isMe) action = '<span class="muted" style="margin:0">This is you</span>';
+      else if (u.main_admin) action = '<span class="muted" style="margin:0">Main admin</span>';
+      else if (u.role === "admin") action = `<button class="btn danger small" data-uid="${u.id}" data-role="user" data-name="${escapeHtml(u.username)}">Remove admin</button>`;
+      else action = `<button class="btn primary small" data-uid="${u.id}" data-role="admin" data-name="${escapeHtml(u.username)}">Make admin</button>`;
+      return `<tr>
+        <td><strong>${escapeHtml(u.username)}</strong></td>
+        <td><span class="badge ${u.role === "admin" ? "active" : "previous"}">${u.role}</span></td>
+        <td>${escapeHtml(fmtDate(u.created_at))}</td>
+        <td class="num">${u.predictions ?? "–"}</td>
+        <td>${action}</td>
+      </tr>`;
+    }).join("")}</tbody></table>`;
+}
+
+$("users-table").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-uid]");
+  if (!btn) return;
+  const { uid, role, name } = btn.dataset;
+  const message = role === "admin"
+    ? `Make ${name} an admin?\n\nThey will be able to upload datasets, train models and change which model everyone uses.`
+    : `Remove ${name}'s admin role?\n\nThey keep their account and history, but lose access to this page.`;
+  if (!confirm(message)) return;
+
+  busy(btn, role === "admin" ? "Saving…" : "Removing…");
+  try {
+    const { users } = await API.setUserRole(uid, role);
+    renderUsers(users);
+    alerts("users-alerts", [["ok", role === "admin" ? `${name} is now an admin.` : `${name} is no longer an admin.`]]);
+  } catch (err) {
+    idle(btn);
+    alerts("users-alerts", [["error", err.message]]);
+  }
+});
+
+$("users-refresh-btn").addEventListener("click", loadUsers);
+
 $("logout-btn").addEventListener("click", logout);
 loadVersions();
+loadUsers();

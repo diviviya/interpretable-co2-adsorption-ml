@@ -1,4 +1,4 @@
-# CO₂ Uptake Predictor: frontend
+# CarbonLab: frontend
 
 Plain HTML, CSS and JavaScript. No build step, no frameworks. The frontend does no machine learning: it sends inputs to the FastAPI backend and shows what comes back.
 
@@ -134,6 +134,8 @@ All need an admin session. The backend checks the role on every call and replies
 | `GET /api/admin/models` | | `{ models: [...] }` (`status` = `active`/`candidate`/`previous`) |
 | `POST /api/admin/models/{version}/activate` | | `{ models: [...] }` |
 | `POST /api/admin/models/{version}/rollback` | | `{ models: [...] }` |
+| `GET /api/admin/users` | | `{ users: [{id, username, role, created_at, predictions, main_admin}] }` |
+| `POST /api/admin/users/{id}/role` | `{ "role": "admin"\|"user" }` | `{ users: [...] }`; `409` for your own role, the main admin, or the last admin |
 
 Errors from any endpoint: a non-2xx status with FastAPI's usual `{ "detail": ... }` body. The page shows the detail text.
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin · CO₂ Uptake Predictor</title>
+  <title>Admin · CarbonLab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -78,6 +78,17 @@
       <p class="sub" style="margin-top:6px">Activating or rolling back changes the model every user gets. Both ask for confirmation.</p>
       <ul class="alerts" id="versions-alerts"></ul>
       <div class="table-wrap" id="versions-table"></div>
+    </section>
+
+    <!-- 4. Users -->
+    <section class="card">
+      <div class="actions" style="justify-content:space-between;align-items:center;margin-top:0">
+        <h2 style="margin:0">4. Users and admins</h2>
+        <button type="button" class="btn ghost small" id="users-refresh-btn">Refresh</button>
+      </div>
+      <p class="sub" style="margin-top:6px">Teammates create an account on the normal sign-up page; make them an admin here. Admins can upload data, train and switch models. You can't change your own role, and the main admin from the server settings always stays an admin.</p>
+      <ul class="alerts" id="users-alerts"></ul>
+      <div class="table-wrap scroll-y" id="users-table"></div>
     </section>
     </div>
   </main>

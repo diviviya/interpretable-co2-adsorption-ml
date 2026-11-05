@@ -7,7 +7,7 @@
 const isAdminPage = document.body.dataset.auth === "admin";
 let mode = "login";   // "login" or "signup" (signup exists on the user page only)
 
-$("brand").innerHTML = `${BRAND_MARK} CO₂ Uptake Predictor`;
+$("brand").innerHTML = `${BRAND_MARK} ${APP_NAME}`;
 drawLattice($("side-lattice"), { cols: 7, rows: 6, size: 30, onDark: true, seed: isAdminPage ? 23 : 5 });
 
 // Already logged in with the right kind of account? Skip this page.
@@ -42,6 +42,12 @@ if (!isAdminPage) {
   $("tab-login").addEventListener("click", () => setMode("login"));
   $("tab-signup").addEventListener("click", () => setMode("signup"));
   if (new URLSearchParams(location.search).get("mode") === "signup") setMode("signup");
+  // Sign-up switched off on the server: back to plain login, with a note.
+  signupCheck.then((allowed) => {
+    if (allowed) return;
+    setMode("login");
+    $("auth-sub").textContent = "Log in with the username and password your admin gave you.";
+  });
 }
 
 // ---------- Submit ----------

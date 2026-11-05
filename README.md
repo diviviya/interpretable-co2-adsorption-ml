@@ -1,4 +1,4 @@
-# Interpretable ML for CO₂ Adsorption on Biomass-Derived Porous Carbons
+# CarbonLab: Interpretable ML for CO₂ Adsorption on Biomass-Derived Porous Carbons
 
 Predicting CO₂ uptake (mmol/g) of biomass waste-derived porous carbons from
 textural properties, elemental composition, temperature and pressure, using a
@@ -51,6 +51,14 @@ ADMIN_USERNAME=<admin name>
 ADMIN_PASSWORD=<at least 8 characters>
 ```
 
+Team accounts (optional): copy `backend/users.example.txt` to `backend/users.txt`
+and list one `username password [admin]` per line. The server creates or updates
+these accounts at every start, so the same logins work on any computer you move
+the project to. `users.txt` is ignored by git.
+
+To stop strangers creating accounts, add `ALLOW_SIGNUP=false` to `backend/.env`
+(the "Create account" buttons then disappear).
+
 Then, in the project folder:
 
 ```
@@ -69,7 +77,7 @@ In `frontend/js/config.js`, `USE_MOCK = true` runs the pages on built-in demo da
 ## What the app does
 
 **Accounts**
-- Anyone can open the landing and About pages. Predicting needs a free account (username + password).
+- Anyone can open the landing and About pages. Predicting needs an account: self sign-up (can be switched off) or one listed in `backend/users.txt`.
 - Passwords are stored as salted PBKDF2-SHA256 hashes; logins are random session tokens that expire after 7 days.
 - Admins log in on a separate admin login page with the account from `backend/.env`.
 
@@ -84,6 +92,7 @@ In `frontend/js/config.js`, `USE_MOCK = true` runs the pages on built-in demo da
 - **Upload a dataset:** checks columns, row count (at least 100), non-numeric cells, blanks and duplicates before saving it.
 - **Train a candidate:** runs the notebook pipeline in the background — drop duplicates, 64/16/20 split (seed 42), refit the 6 models with the tuned parameters from `artifacts/best_params.json` (no re-tuning), entropy-TOPSIS weights from validation scores, test metrics, SHAP importance.
 - **Model versions:** compare a candidate with the active model, activate it, or roll back to a previous version. The original notebook model is `v1-ensemble`.
+- **Users and admins:** see every account and make teammates admins (or remove it). You can't change your own role, the main admin from `backend/.env` always stays admin, and there is always at least one admin.
 
 Accounts, uploaded datasets, trained models, the version list and the
 prediction history live in `backend/data/`, which is not stored in git.
@@ -109,6 +118,8 @@ prediction history live in `backend/data/`, which is not stored in git.
 | GET | `/api/admin/models` | all model versions |
 | POST | `/api/admin/models/{version}/activate` | make a candidate active |
 | POST | `/api/admin/models/{version}/rollback` | go back to a previous model |
+| GET | `/api/admin/users` | all accounts with role and prediction count |
+| POST | `/api/admin/users/{id}/role` | make a user an admin, or remove admin |
 
 ## Roadmap
 

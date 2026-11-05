@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     admin_username: str = ""
     admin_password: str = ""
 
+    # false = only accounts from backend/users.txt (and the admin) can log in;
+    # the "Create account" buttons disappear from the website.
+    allow_signup: bool = True
+
     # How long a login lasts before the user has to log in again.
     session_days: int = 7
 

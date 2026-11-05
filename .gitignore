@@ -17,10 +17,16 @@ Thumbs.db
 # Large or regenerable outputs
 *.joblib
 *.pkl
+*.zip
 
 # Anaconda / Jupyter app files
 anaconda_projects/
 catboost_info/
 backend/data/
-# Secrets
+
+# Secrets: passwords live only on this computer
 .env
+backend/users.txt
+
+# Scratch files
+test_batch.csv

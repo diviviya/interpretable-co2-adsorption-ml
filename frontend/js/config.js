@@ -22,6 +22,9 @@ const CONFIG = {
   MAX_UPLOAD_MB: 5,          // quick size check before uploading a CSV
 };
 
+// The product name shown in the navigation and login pages.
+const APP_NAME = "CarbonLab";
+
 // The column the model predicts.
 const TARGET = "CO2 uptake (mmol/g)";
 

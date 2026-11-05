@@ -229,6 +229,22 @@ const MOCK = (() => {
   async function me() { await wait(100); return { user: Auth.user() }; }
   async function logout() { return { ok: true }; }
 
+  // ---- users (demo) ----
+  const users = [
+    { id: 1, username: "adhithya", role: "admin", created_at: "2026-11-04T21:00:00+05:30", predictions: 12, main_admin: true },
+    { id: 2, username: "divya", role: "user", created_at: "2026-11-05T12:40:00+05:30", predictions: 3, main_admin: false },
+    { id: 3, username: "vignesh", role: "user", created_at: "2026-11-05T12:45:00+05:30", predictions: 5, main_admin: false },
+  ];
+  async function listUsers() { await wait(250); return { users: structuredClone(users), mock: true }; }
+  async function setUserRole(userId, role) {
+    await wait(300);
+    const u = users.find((x) => x.id === Number(userId));
+    if (!u) throw new Error("No such user.");
+    if (role === "user" && u.main_admin) throw new Error("The main admin (set in backend/.env) always stays an admin.");
+    u.role = role;
+    return { users: structuredClone(users), mock: true };
+  }
+
   async function health() { return { status: "ok", mock: true }; }
   async function getActiveModel() {
     await wait(200);
@@ -238,6 +254,6 @@ const MOCK = (() => {
   return {
     health, getFeatureInfo, getActiveModel, getImportance, getHistory,
     predict, predictBatch,
-    login, signup, me, logout, uploadDataset, startTraining, getTrainingStatus, listModels, activateModel, rollbackModel,
+    login, signup, me, logout, listUsers, setUserRole, uploadDataset, startTraining, getTrainingStatus, listModels, activateModel, rollbackModel,
   };
 })();

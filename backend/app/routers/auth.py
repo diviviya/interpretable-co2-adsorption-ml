@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
+from ..config import settings
 from ..security import bearer, current_user
 from ..services import auth_service
 
@@ -26,8 +27,16 @@ def _session_reply(user: dict) -> dict:
     return {"token": auth_service.start_session(user["id"]), "user": user}
 
 
+@router.get("/config")
+def auth_config():
+    # Lets the pages hide "Create account" when sign-up is turned off.
+    return {"allow_signup": settings.allow_signup}
+
+
 @router.post("/signup")
 def signup(req: Credentials):
+    if not settings.allow_signup:
+        raise HTTPException(403, "Sign-up is turned off. Ask the admin for an account.")
     username = req.username.strip()
     problem = auth_service.check_new_account(username, req.password)
     if problem:

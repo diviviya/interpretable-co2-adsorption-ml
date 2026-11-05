@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from ..security import require_admin
-from ..services import dataset_service, registry_service, training_service
+from ..services import auth_service, dataset_service, registry_service, training_service
 from ..services.model_service import model_service
 
 MAX_DATASET_BYTES = 10 * 1024 * 1024    # 10 MB
@@ -80,3 +80,26 @@ def activate(version: str):
 def rollback(version: str):
     # Only a model that was active before can be rolled back to.
     return _switch(version, "previous")
+
+
+# ---------- Users ----------
+class RoleRequest(BaseModel):
+    role: str   # "admin" or "user"
+
+
+@router.get("/users")
+def list_users():
+    return {"users": auth_service.list_users()}
+
+
+@router.post("/users/{user_id}/role")
+def set_role(user_id: int, req: RoleRequest, admin: dict = Depends(require_admin)):
+    # `admin` is the person clicking the button, so they can't demote themselves.
+    try:
+        auth_service.set_role(user_id, req.role, acting_user_id=admin["id"])
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    return {"users": auth_service.list_users()}
+

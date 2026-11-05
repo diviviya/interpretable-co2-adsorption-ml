@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CO₂ Uptake Predictor · Biomass-derived porous carbons</title>
+  <title>CarbonLab · CO₂ uptake predictor for biomass-derived porous carbons</title>
   <meta name="description" content="Estimate the CO₂ uptake of biomass-derived porous carbons with an interpretable ensemble model, and see which inputs drove each estimate.">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,19 +12,18 @@
 <body>
   <header class="site-nav" id="site-nav"></header>
 
-  <main class="wrap">
-    <section class="hero">
-      <div>
-        <h1>Know a carbon's CO₂ uptake before you test it</h1>
-        <p class="hero-lede">Enter a biomass-derived porous carbon's surface area, composition and test conditions. An ensemble of six tree models estimates how much CO₂ it adsorbs, in mmol/g, and shows which inputs drove the number.</p>
-        <div class="actions" id="hero-actions"></div>
-      </div>
-      <figure style="margin:0">
-        <svg class="hero-art" id="hero-lattice"></svg>
-        <figcaption class="hero-caption">A carbon sheet holding CO₂ in its pores (illustration)</figcaption>
-      </figure>
-    </section>
+  <section class="hero-band" id="hero-band">
+    <canvas class="hero-net" id="hero-net" aria-hidden="true"></canvas>
+    <div class="wrap hero-inner">
+      <p class="hero-name">CarbonLab</p>
+      <h1>Know a carbon's CO₂ uptake before you test it</h1>
+      <p class="hero-lede">Enter a biomass-derived porous carbon's surface area, composition and test conditions. An ensemble of six tree models estimates how much CO₂ it adsorbs, in mmol/g, and shows which inputs drove the number.</p>
+      <div class="actions" id="hero-actions"></div>
+    </div>
+    <p class="hero-hint" id="hero-hint">Move your pointer over the molecules</p>
+  </section>
 
+  <main class="wrap">
     <div class="uses">
       <div class="use">
         <svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="5" width="24" height="24" rx="4"/><path d="M11 13h12M11 18h8M11 23h5"/></svg>
@@ -79,7 +78,7 @@
         <p>Create a free account. Your predictions are saved to your own history.</p>
       </div>
       <div class="actions">
-        <a class="btn primary" href="login.html?mode=signup">Create an account</a>
+        <a class="btn primary signup-only" href="login.html?mode=signup">Create an account</a>
         <a class="btn ghost" href="login.html">Log in</a>
       </div>
     </section>
@@ -94,13 +93,15 @@
   <script>
     // Landing page: public. Buttons depend on whether you're logged in.
     renderNav("home");
-    drawLattice($("hero-lattice"), { cols: 9, rows: 6, size: 28, seed: 11 });
+    startCO2Network($("hero-net"), $("hero-band"));
+    if (matchMedia("(pointer: coarse)").matches) $("hero-hint").textContent = "Touch and drag over the molecules";
 
     const user = Auth.user();
     $("hero-actions").innerHTML = user
       ? `<a class="btn primary" href="predict.html">Open the predictor</a><a class="btn ghost" href="batch.html">Predict a CSV</a>`
-      : `<a class="btn primary" href="login.html?mode=signup">Create an account</a><a class="btn ghost" href="login.html">Log in</a>`;
+      : `<a class="btn primary signup-only" href="login.html?mode=signup">Create an account</a><a class="btn ghost" href="login.html">Log in</a>`;
     $("cta-band").hidden = !!user;
+    applySignupSetting();
 
     API.getActiveModel().then((m) => {
       $("m-version").textContent = m.version;

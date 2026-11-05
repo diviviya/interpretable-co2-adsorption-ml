@@ -132,6 +132,17 @@ function nextPage(fallback) {
     .catch(() => { /* 401 is handled in api.js; offline: keep the saved user */ });
 })();
 
+// Sign-up can be switched off on the server (ALLOW_SIGNUP=false in .env).
+// Anything marked class="signup-only" is hidden then. Asked once per page.
+let signupAllowed = true;
+const signupCheck = API.authConfig()
+  .then((c) => { signupAllowed = c.allow_signup !== false; applySignupSetting(); return signupAllowed; })
+  .catch(() => true);   // can't ask: leave the buttons as they are
+
+function applySignupSetting() {
+  document.querySelectorAll(".signup-only").forEach((el) => { el.hidden = !signupAllowed; });
+}
+
 async function logout() {
   try { await API.logout(); } catch { /* ending it locally is enough */ }
   Auth.clear();
@@ -166,11 +177,11 @@ function renderNav(current) {
     ? `<span class="user-chip">${escapeHtml(user.username)}${user.role === "admin" ? '<span class="role-tag">admin</span>' : ""}</span>
        <button type="button" class="nav-btn" id="logout-nav">Log out</button>`
     : `<a class="nav-btn" href="login.html">Log in</a>
-       <a class="nav-btn solid" href="login.html?mode=signup">Create account</a>`;
+       <a class="nav-btn solid signup-only" href="login.html?mode=signup">Create account</a>`;
 
   host.innerHTML = `
     <div class="wrap nav-inner">
-      <a class="brand" href="index.html">${BRAND_MARK} CO₂ Uptake Predictor</a>
+      <a class="brand" href="index.html">${BRAND_MARK} ${APP_NAME}</a>
       <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
       <nav class="nav-links" id="nav-links" aria-label="Main">${links}</nav>
       <div class="nav-right">
@@ -187,6 +198,7 @@ function renderNav(current) {
     $("nav-toggle").textContent = open ? "Close" : "Menu";
   });
   if (user) $("logout-nav").addEventListener("click", logout);
+  applySignupSetting();
   checkBackend();
 }
 
@@ -209,7 +221,141 @@ async function checkBackend() {
   }
 }
 
-// ---------- Carbon lattice illustration (landing + login pages) ----------
+// ---------- Interactive CO₂ network (landing page hero) ----------
+// CO₂ molecules (O=C=O) drift across the hero. Molecules close to each
+// other are linked by faint lines, and small pulses travel along those
+// links. Near the pointer, molecules are drawn in, brighten and link up
+// more strongly, a playful nod to adsorption: CO₂ gathering on a surface.
+// Plain <canvas>, no libraries. It pauses when off-screen or in a hidden tab,
+// and draws one still frame for people who prefer reduced motion.
+function startCO2Network(canvas, host) {
+  const ctx = canvas.getContext("2d");
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const LINK = 150, POINTER_R = 180, MAX_SPEED = 1.1;
+  let W = 0, H = 0, nodes = [], pulses = [], raf = 0, visible = true;
+  const pointer = { x: 0, y: 0, active: false };
+
+  const newNode = () => ({
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+    angle: Math.random() * Math.PI, spin: (Math.random() - 0.5) * 0.012, glow: 0,
+  });
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const box = host.getBoundingClientRect();
+    W = box.width; H = box.height;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // More screen, more molecules, within limits so phones stay smooth.
+    const target = Math.round(Math.min(85, Math.max(26, (W * H) / 13000)));
+    while (nodes.length < target) nodes.push(newNode());
+    nodes.length = target;
+    if (still) draw();
+  }
+
+  function step() {
+    for (const n of nodes) {
+      let target = 0;
+      if (pointer.active) {
+        const dx = pointer.x - n.x, dy = pointer.y - n.y, d = Math.hypot(dx, dy) || 1;
+        if (d < POINTER_R) {
+          const pull = 1 - d / POINTER_R;
+          n.vx += (dx / d) * 0.03 * pull;
+          n.vy += (dy / d) * 0.03 * pull;
+          target = pull;
+        }
+      }
+      n.glow += (target - n.glow) * 0.08;
+      n.vx = n.vx * 0.99 + (Math.random() - 0.5) * 0.02;
+      n.vy = n.vy * 0.99 + (Math.random() - 0.5) * 0.02;
+      const speed = Math.hypot(n.vx, n.vy);
+      if (speed > MAX_SPEED) { n.vx *= MAX_SPEED / speed; n.vy *= MAX_SPEED / speed; }
+      n.x += n.vx; n.y += n.vy; n.angle += n.spin;
+      // Leave one side, come back on the other.
+      if (n.x < -20) n.x = W + 20; else if (n.x > W + 20) n.x = -20;
+      if (n.y < -20) n.y = H + 20; else if (n.y > H + 20) n.y = -20;
+    }
+    // Now and then, send a pulse from a molecule to its nearest neighbour.
+    if (pulses.length < 14 && Math.random() < 0.08) {
+      const a = Math.floor(Math.random() * nodes.length);
+      let best = -1, bestD = LINK;
+      nodes.forEach((m, i) => {
+        if (i === a) return;
+        const d = Math.hypot(m.x - nodes[a].x, m.y - nodes[a].y);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      if (best >= 0) pulses.push({ a, b: best, t: 0 });
+    }
+    pulses = pulses.filter((p) => (p.t += 0.022) < 1 && p.a < nodes.length && p.b < nodes.length);
+  }
+
+  function drawMolecule(n) {
+    const scale = 1 + n.glow * 0.4, L = 7 * scale;
+    ctx.save();
+    ctx.translate(n.x, n.y);
+    if (n.glow > 0.05) {
+      ctx.fillStyle = `rgba(124,198,220,${(n.glow * 0.22).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(0, 0, 16 * scale, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.rotate(n.angle);
+    ctx.strokeStyle = `rgba(232,241,244,${(0.55 + n.glow * 0.45).toFixed(3)})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-L, 0); ctx.lineTo(L, 0); ctx.stroke();
+    ctx.fillStyle = `rgba(239,138,92,${(0.75 + n.glow * 0.25).toFixed(3)})`;   // oxygen
+    for (const x of [-L, L]) { ctx.beginPath(); ctx.arc(x, 0, 3.2 * scale, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = "#e8f1f4";                                                 // carbon
+    ctx.beginPath(); ctx.arc(0, 0, 2.8 * scale, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineWidth = 1;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j], d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (d > LINK) continue;
+        const alpha = (1 - d / LINK) * (0.22 + Math.max(a.glow, b.glow) * 0.5);
+        ctx.strokeStyle = `rgba(124,198,220,${alpha.toFixed(3)})`;
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+    }
+    for (const p of pulses) {
+      const a = nodes[p.a], b = nodes[p.b];
+      const x = a.x + (b.x - a.x) * p.t, y = a.y + (b.y - a.y) * p.t;
+      const fade = Math.sin(p.t * Math.PI);
+      ctx.fillStyle = `rgba(255,255,255,${(0.85 * fade).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(x, y, 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(124,198,220,${(0.25 * fade).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+    }
+    nodes.forEach(drawMolecule);
+  }
+
+  function loop() {
+    raf = 0;
+    if (!visible || document.hidden) return;
+    step(); draw();
+    raf = requestAnimationFrame(loop);
+  }
+  const play = () => { if (!still && !raf) raf = requestAnimationFrame(loop); };
+
+  host.addEventListener("pointermove", (e) => {
+    const box = host.getBoundingClientRect();
+    pointer.x = e.clientX - box.left; pointer.y = e.clientY - box.top; pointer.active = true;
+  });
+  host.addEventListener("pointerleave", () => { pointer.active = false; });
+  new ResizeObserver(resize).observe(host);
+  new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; if (visible) play(); }).observe(host);
+  document.addEventListener("visibilitychange", play);
+
+  resize();
+  play();
+}
+
+// ---------- Carbon lattice illustration (login pages) ----------
 // Draws a honeycomb of carbon atoms (like a sheet of porous carbon). Some
 // hexagons are "pores", and CO₂ molecules (O=C=O) settle into a few of them
 // once when the page opens. Purely decorative: aria-hidden.

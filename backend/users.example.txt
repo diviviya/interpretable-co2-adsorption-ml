@@ -1,0 +1,16 @@
+# Team accounts. Copy this file to backend/users.txt and put real names and
+# passwords there. users.txt is ignored by git, so passwords stay off GitHub.
+#
+# One account per line:   username   password   [admin]
+#  - usernames: 3-30 letters, numbers, _ . or -
+#  - passwords: at least 8 characters, no spaces
+#  - add the word "admin" at the end to make that person an admin
+#
+# The server reads this file every time it starts:
+#  - new names become accounts, existing ones get the password from here
+#  - removing a line does NOT delete the account
+#  - the main admin stays in backend/.env (ADMIN_USERNAME / ADMIN_PASSWORD)
+
+divya      Change-Me-2026    admin
+vignesh    Change-Me-2027
+sai        Change-Me-2028

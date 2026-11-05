@@ -79,6 +79,7 @@ const API = (() => {
     login: (username, password, admin = false) =>
       m() ? MOCK.login(username, password, admin) : request("/api/auth/login", { method: "POST", body: { username, password, admin } }),
     me:     () => m() ? MOCK.me()     : request("/api/auth/me"),
+    authConfig: () => m() ? Promise.resolve({ allow_signup: true }) : request("/api/auth/config"),
     logout: () => m() ? MOCK.logout() : request("/api/auth/logout", { method: "POST" }),
 
     // ---- public model info ----
@@ -115,6 +116,10 @@ const API = (() => {
     activateModel: (version) =>
       m() ? MOCK.activateModel(version)
           : request(`/api/admin/models/${encodeURIComponent(version)}/activate`, { method: "POST" }),
+    listUsers: () => m() ? MOCK.listUsers() : request("/api/admin/users"),
+    setUserRole: (userId, role) =>
+      m() ? MOCK.setUserRole(userId, role)
+          : request(`/api/admin/users/${encodeURIComponent(userId)}/role`, { method: "POST", body: { role } }),
     rollbackModel: (version) =>
       m() ? MOCK.rollbackModel(version)
           : request(`/api/admin/models/${encodeURIComponent(version)}/rollback`, { method: "POST" }),
