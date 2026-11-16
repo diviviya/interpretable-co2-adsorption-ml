@@ -29,6 +29,7 @@ class ModelService:
         self.explainers: dict = {}
         self.base_value: float = 0.0
         self.importance: list[dict] = []
+        self.conformal: dict = {}   # prediction-interval widths (enhancement), from artifacts/conformal.json
 
     # ------------------------------------------------------------------
     # Loading (at startup, and again when the admin activates a model)
@@ -46,6 +47,10 @@ class ModelService:
         # Build everything for the new model first...
         explainers, base_value = build_explainers(bundle)
         importance = self._load_importance(bundle)
+        if not self.conformal:
+            cpath = ARTIFACTS / "conformal.json"
+            if cpath.exists():
+                self.conformal = json.loads(cpath.read_text())
         if not self.feature_info:
             # Input ranges for the form; these come from the original data.
             with open(ARTIFACTS / "feature_info.json") as f:
@@ -86,6 +91,25 @@ class ModelService:
 
     def predict_one(self, features: dict) -> float:
         return float(self.predict_many([features])[0])
+
+    def interval_for(self, prediction: float) -> dict | None:
+        """ENHANCEMENT: a prediction interval around one prediction.
+        The half-width q comes from conformal calibration (see
+        scripts/conformal_calibration.py), so the interval is meant to contain
+        the true value about `level` of the time on unseen samples.
+        Returns None if conformal.json hasn't been generated yet."""
+        c = self.conformal
+        if not c:
+            return None
+        level = c["headline_level"]
+        q = c["half_width"][level]
+        return {
+            "level": float(level),
+            "lower": max(prediction - q, 0.0),   # uptake can't be negative
+            "upper": prediction + q,
+            "half_width": q,
+            "test_coverage": c.get("test_coverage", {}).get(level),
+        }
 
     # ------------------------------------------------------------------
     # Explanation (SHAP) for one prediction

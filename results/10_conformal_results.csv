@@ -1,0 +1,4 @@
+level,conformal_half_width,conformal_test_coverage,gaussian_half_width,gaussian_test_coverage
+0.8,0.7236,0.783,0.8247,0.811
+0.9,1.0924,0.925,1.0585,0.906
+0.95,1.4368,0.962,1.2613,0.953

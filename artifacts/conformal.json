@@ -1,0 +1,15 @@
+{
+  "method": "split-conformal prediction on 5-fold out-of-fold ensemble residuals",
+  "n_calibration": 420,
+  "headline_level": "0.90",
+  "half_width": {
+    "0.80": 0.7236,
+    "0.90": 1.0924,
+    "0.95": 1.4368
+  },
+  "test_coverage": {
+    "0.80": 0.783,
+    "0.90": 0.925,
+    "0.95": 0.962
+  }
+}

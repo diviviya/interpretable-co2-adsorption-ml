@@ -38,8 +38,12 @@ def predict(req: PredictRequest, user: dict = Depends(current_user)):
     history_service.add_prediction(user["id"], req.features, round(prediction, 4), model_service.version)
     # No range warnings here: predict.js already warns about out-of-range
     # inputs, and sending them from both sides would show each one twice.
+    interval = model_service.interval_for(prediction)
+    if interval:
+        interval = {k: (round(v, 4) if isinstance(v, float) else v) for k, v in interval.items()}
     return PredictResponse(
         prediction=round(prediction, 4),
+        interval=interval,
         model_version=model_service.version,
         base_value=round(model_service.base_value, 4),
         shap=model_service.explain_one(req.features),

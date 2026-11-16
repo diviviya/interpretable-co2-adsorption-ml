@@ -54,11 +54,20 @@ class ShapItem(BaseModel):
     contribution: float
 
 
+class IntervalOut(BaseModel):
+    level: float                      # e.g. 0.90 = a 90% prediction interval
+    lower: float
+    upper: float
+    half_width: float
+    test_coverage: Optional[float] = None   # share of unseen test rows that really fell inside
+
+
 class PredictResponse(BaseModel):
     prediction: float
     unit: str = "mmol/g"
     model_version: str
     base_value: Optional[float] = None
     shap: list[ShapItem] = []
+    interval: Optional[IntervalOut] = None
     explanation: Optional[str] = None
     warnings: list[str] = []

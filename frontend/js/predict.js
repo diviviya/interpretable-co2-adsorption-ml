@@ -117,6 +117,11 @@ function showPrediction(res, warnings) {
   if (activeModel && activeModel.metrics && activeModel.version === res.model_version) {
     parts.push(`typical error ± ${fmt(activeModel.metrics.rmse, 2)} mmol/g (test RMSE)`);
   }
+  // Enhancement: conformal prediction interval (only if the backend sent one).
+  if (res.interval) {
+    const pct = Math.round(res.interval.level * 100);
+    parts.push(`${pct}% prediction interval: ${fmt(res.interval.lower, 2)} – ${fmt(res.interval.upper, 2)} mmol/g`);
+  }
   $("result-meta").textContent = parts.join(" · ");
   showAlerts([...(res.warnings || []), ...warnings].map((w) => ["", w]));
 }
