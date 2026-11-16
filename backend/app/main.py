@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import REPO_ROOT, settings
 from .routers import admin, auth, health, predict
-from .services import auth_service, history_service, registry_service
+from .services import auth_service, history_service, hub_service, registry_service
 from .services.model_service import model_service
 
 
@@ -15,6 +15,8 @@ async def lifespan(app: FastAPI):
     # Runs once at startup. The registry says which model version is active
     # (the first time, it creates the registry with the notebook model, v1),
     # and that bundle is loaded into memory so predictions don't reload it.
+    # First make sure the model file exists (download it from Hugging Face if not).
+    print("[startup]", hub_service.ensure_original_bundle())
     history_service.init_db()
     auth_service.init_db()
     # Create/update the admin account from backend/.env and say so in the terminal.

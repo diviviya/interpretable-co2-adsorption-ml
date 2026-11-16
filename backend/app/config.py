@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5500,http://127.0.0.1:5500"
     model_version: str = "v1-ensemble"
 
+    # Hugging Face model repo to download the model from when it isn't on
+    # this machine (see services/hub_service.py). Empty = use the local file only.
+    hf_model_repo: str = ""
+
     # The admin account. The server creates (or updates) it at startup from
     # these two values, so there is no "sign up as admin" on the website.
     admin_username: str = ""

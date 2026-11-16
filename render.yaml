@@ -1,0 +1,25 @@
+# Render "Blueprint": tells Render how to build and run CarbonLab.
+# Render reads this file from the repo root when you create a Blueprint.
+services:
+  - type: web
+    name: carbonlab
+    runtime: python
+    plan: free                 # change to "standard" (2 GB RAM) if the free 512 MB runs out of memory
+    branch: adhithya-version
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      # The model file is not in GitHub; the server downloads it from here at startup.
+      - key: HF_MODEL_REPO
+        value: adhithyasharma/carbonlab-co2-ensemble
+      # Main admin login. Render asks you to type these when you create the Blueprint.
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ALLOW_SIGNUP
+        value: "true"
+      # Stops the tree libraries from each starting many threads on a tiny CPU.
+      - key: OMP_NUM_THREADS
+        value: "1"
