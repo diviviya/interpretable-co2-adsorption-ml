@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About · CO₂ Uptake Predictor</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-nav" id="site-nav"></header>
+
+  <main class="wrap">
+    <div class="page-head">
+      <h1>About the model</h1>
+      <p>What this tool predicts, how the model was built, how well it performs, and where it should not be trusted.</p>
+    </div>
+
+    <section class="card prose">
+      <h2>Purpose</h2>
+      <p>Porous carbons made from biomass (such as crop waste or wood) can capture CO₂, but making and testing each material in a lab is slow. This tool estimates how much CO₂ a carbon will adsorb, in <strong>mmol of CO₂ per gram of carbon</strong>, from its structure, its elemental composition and the test conditions. It also shows which inputs drove each estimate, so the result is not a black box.</p>
+      <p>The method follows Fan et al. (2026), who built an interpretable ensemble model for CO₂ adsorption on MgO-based sorbents. Here the same approach is applied to biomass-derived porous carbons, using 527 published experiments compiled by Yuan et al. (2021).</p>
+    </section>
+
+    <section class="card">
+      <h2>Inputs and prediction target</h2>
+      <p class="sub">The model takes 10 inputs and predicts one number: <code id="target-name"></code>. The ranges are those of the data the model learned from.</p>
+      <div class="table-wrap" id="features-table"></div>
+    </section>
+
+    <section class="card prose">
+      <h2>How the model works</h2>
+      <ol>
+        <li><strong>Data preparation.</strong> One duplicate row was removed, leaving 526 experiments. They were split into 336 for training, 84 for validation and 106 locked away for the final test. Missing values (mostly micropore volume) were filled with the median of the training rows.</li>
+        <li><strong>Six tree-based models.</strong> Random Forest, Extra Trees, Gradient Boosting, XGBoost, LightGBM and CatBoost. Each learns by splitting the data with yes/no questions such as "is the pressure above 0.5 bar?".</li>
+        <li><strong>Tuning.</strong> Each model's settings were tuned with Optuna, scoring every attempt with 5-fold cross-validation on the training rows only.</li>
+        <li><strong>Ensemble.</strong> The six predictions are combined as a weighted average. The weights come from <em>entropy-TOPSIS</em>, which ranks the models on several error measures at once and gives better models a larger share.</li>
+        <li><strong>Explanation.</strong> SHAP splits each prediction into a contribution from each input, starting from the model's average prediction.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>How well it performs</h2>
+      <p class="sub" id="metrics-sub">Loading…</p>
+      <div class="stats" id="metrics"></div>
+      <div class="prose">
+        <p class="note"><strong>RMSE</strong> and <strong>MAE</strong> are the typical size of the prediction error, in mmol/g (lower is better). <strong>R²</strong> is the share of the variation in CO₂ uptake that the model explains (closer to 1 is better). R² is not a percentage accuracy.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Which inputs matter most overall</h2>
+      <p class="sub">Average size of each input's SHAP contribution across the whole dataset. Larger means the input moves predictions more, in either direction.</p>
+      <div id="importance"></div>
+      <ul class="alerts" id="importance-alerts"></ul>
+    </section>
+
+    <section class="card prose">
+      <h2>Limitations</h2>
+      <ul>
+        <li><strong>Few test conditions.</strong> The data covers only a few temperatures (0–30 °C) and pressures (0.1–1 bar). Predictions for other conditions are guesses beyond what the model has seen.</li>
+        <li><strong>Out-of-range inputs.</strong> Values outside the ranges in the table above are less reliable. The prediction form warns about these.</li>
+        <li><strong>Missing data.</strong> About 40% of micropore volume values were missing and filled with a median, so the model has weaker information about that input.</li>
+        <li><strong>Small dataset.</strong> 526 experiments from published studies, measured in different labs. The ensemble's advantage over its best single model (CatBoost) was small and not consistent between the validation and test rows.</li>
+        <li><strong>Explanations are not causes.</strong> SHAP describes how the model reached its number. It does not prove that changing an input would change real CO₂ uptake by that amount.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="foot wrap">References: Fan et al. (2026), <em>Environmental Research</em>; Yuan et al. (2021), biomass-derived porous carbon CO₂ adsorption dataset.</footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/mock.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/about.js"></script>
+</body>
+</html>

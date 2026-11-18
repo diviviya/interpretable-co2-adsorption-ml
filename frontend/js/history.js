@@ -1,79 +1,45 @@
-function getHistoryUser() {
+// =====================================================================
+// history.js — Page D: previous predictions, fetched from the backend.
+// =====================================================================
+
+renderNav("history");
+
+// Columns shown in the table: time, version, prediction, then the inputs.
+const SHOWN = ["Surface Area (m2/g)", "N (%)", "Temp (°C)", "Pressure (bar)"];
+
+async function loadHistory() {
+  $("history-alerts").innerHTML = "";
+  $("history-sub").textContent = "Loading…";
   try {
-    return JSON.parse(localStorage.getItem("co2_user") || "{}");
-  } catch (_) {
-    return {};
+    const res = await API.getHistory();
+    const items = res.items || [];
+    $("history-sub").textContent = items.length
+      ? `${items.length} prediction${items.length === 1 ? "" : "s"}${res.mock ? " (demo data, this browser tab only)" : ""}`
+      : "";
+    $("history-empty").hidden = items.length > 0;
+    $("history-table").hidden = items.length === 0;
+    if (!items.length) return;
+
+    const head = ["Time", "Model version", "Prediction (mmol/g)", ...SHOWN.map((c) => {
+      const f = FIELDS.find((x) => x.column === c);
+      return `${f.label} (${f.unit})`;
+    })];
+    const body = items.map((it) => `
+      <tr>
+        <td>${escapeHtml(fmtDate(it.timestamp))}</td>
+        <td>${escapeHtml(it.model_version)}</td>
+        <td class="num highlight">${escapeHtml(fmt(it.prediction))}</td>
+        ${SHOWN.map((c) => `<td class="num">${it.features && it.features[c] != null ? escapeHtml(fmt(it.features[c])) : "–"}</td>`).join("")}
+      </tr>`).join("");
+    $("history-table").innerHTML =
+      `<table><thead><tr>${head.map((h, i) => `<th class="${i >= 2 ? "num" : ""}">${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table>`;
+  } catch (err) {
+    $("history-sub").textContent = "";
+    $("history-table").hidden = true;
+    $("history-empty").hidden = true;
+    $("history-alerts").innerHTML = `<li class="error">${escapeHtml(err.message)}</li>`;
   }
 }
 
-function escapeHistoryText(value) {
-  return String(value ?? "—").replace(/[&<>"']/g, char => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  }[char]));
-}
-
-async function loadPredictionHistory() {
-  const status = document.getElementById("history-status");
-  const wrap = document.getElementById("history-table-wrap");
-  const user = getHistoryUser();
-  const isAdmin = user.role === "admin";
-
-  status.hidden = false;
-  status.textContent = isAdmin ? "Loading prediction history…" : "Loading your history…";
-  wrap.hidden = true;
-
-  try {
-    const response = await fetch(`${API_BASE}/api/history`, { headers: authHeaders() });
-    const data = await response.json();
-    if (response.status === 401) { logout(); return; }
-    if (!response.ok) {
-      const detail = typeof data.detail === "string" ? data.detail : "Could not load prediction history.";
-      throw new Error(detail);
-    }
-
-    const rows = data.history || [];
-    if (!rows.length) {
-      status.textContent = isAdmin ? "No predictions have been recorded yet." : "You haven't made any predictions yet.";
-      return;
-    }
-
-    const headers = isAdmin
-      ? "<th>Date</th><th>Account</th><th>CO₂ uptake</th><th>Model version</th>"
-      : "<th>Date</th><th>CO₂ uptake</th><th>Model version</th>";
-
-    const body = rows.map(row => {
-      const date = new Date(row.timestamp);
-      const dateText = Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
-      const accountCell = isAdmin ? `<td>${escapeHistoryText(row.username || "Unknown account")}</td>` : "";
-      return `<tr>
-        <td>${escapeHistoryText(dateText)}</td>
-        ${accountCell}
-        <td><strong>${Number(row.predicted_uptake).toFixed(4)} mmol/g</strong></td>
-        <td>${escapeHistoryText(row.model_version || "—")}</td>
-      </tr>`;
-    }).join("");
-
-    wrap.innerHTML = `<table class="history-table"><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
-    status.hidden = true;
-    wrap.hidden = false;
-  } catch (error) {
-    status.textContent = error.message || "Could not load history.";
-    status.hidden = false;
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (!getAccessToken()) {
-    window.location.replace("login.html?next=history.html");
-    return;
-  }
-
-  const isAdmin = getHistoryUser().role === "admin";
-  document.querySelector(".eyebrow").textContent = isAdmin ? "ADMINISTRATION" : "YOUR ACCOUNT";
-  document.querySelector(".lead").textContent = isAdmin
-    ? "Review predictions made across user accounts."
-    : "A record of predictions made using your account.";
-  document.querySelector(".history-card h2").textContent = isAdmin ? "Recent predictions across accounts" : "Recent predictions";
-  document.getElementById("refresh-history").addEventListener("click", loadPredictionHistory);
-  loadPredictionHistory();
-});
+$("refresh-btn").addEventListener("click", loadHistory);
+loadHistory();

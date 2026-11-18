@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Batch · CO₂ Uptake Predictor</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-nav" id="site-nav"></header>
+
+  <main class="wrap">
+    <div class="page-head">
+      <h1>Batch prediction</h1>
+      <p>Upload a CSV of many carbons and get a prediction for every row. Download the results as a CSV.</p>
+    </div>
+
+    <section class="card">
+      <h2>1. Choose a CSV file</h2>
+      <p class="sub">The first row must hold the column names. Required columns:</p>
+      <p class="note" id="required-cols" style="margin-top:0"></p>
+      <div class="actions" style="margin-top:12px">
+        <button type="button" class="btn ghost small" id="template-btn">Download an empty template</button>
+      </div>
+
+      <div class="drop" id="drop">
+        <div>Drag a .csv file here, or choose one:</div>
+        <input type="file" id="file" accept=".csv,text/csv">
+        <div class="file-name" id="file-name"></div>
+      </div>
+      <ul class="alerts" id="file-alerts"></ul>
+    </section>
+
+    <section class="card" id="preview-card" hidden>
+      <h2>2. Check the file</h2>
+      <p class="sub" id="preview-sub"></p>
+      <div class="table-wrap scroll-y" id="preview-table"></div>
+      <div class="actions" style="margin-top:14px">
+        <button type="button" class="btn primary" id="run-btn">Run predictions</button>
+      </div>
+    </section>
+
+    <section class="card" id="results-card" hidden>
+      <h2>3. Results <span class="badge mock" id="mock-badge" hidden>Demo data</span></h2>
+      <p class="sub" id="results-sub"></p>
+      <ul class="alerts" id="row-errors"></ul>
+      <div class="actions" style="margin-top:12px">
+        <button type="button" class="btn primary" id="download-btn">Download results CSV</button>
+      </div>
+      <div class="table-wrap scroll-y" id="results-table"></div>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/mock.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/batch.js"></script>
+</body>
+</html>

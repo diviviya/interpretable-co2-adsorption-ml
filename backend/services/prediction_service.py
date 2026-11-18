@@ -149,6 +149,8 @@ def compute_shap(input_df: pd.DataFrame):
                 sv_float = float(sv)
                 shap_contributions.append({
                     "feature": col_name,
+                    "value": val_float,
+                    "contribution": round(sv_float, 4),
                     "input_value": val_float,
                     "shap_value": round(sv_float, 4),
                     "impact": "positive" if sv_float >= 0 else "negative",
@@ -209,5 +211,6 @@ def predict_batch_csv(file_bytes: bytes, filename: str) -> dict:
         "min_uptake_mmol_g": round(float(np.min(final_preds)), 4),
         "max_uptake_mmol_g": round(float(np.max(final_preds)), 4),
         "predictions_preview": df_out.head(10).to_dict(orient="records"),
+        "df_out": df_out,
         "csv_content": df_out.to_csv(index=False)
     }

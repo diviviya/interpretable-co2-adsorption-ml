@@ -1,0 +1,52 @@
+{
+  "Surface Area (m2/g)": {
+    "min": 2.48,
+    "max": 3337.0,
+    "median": 1420.0
+  },
+  "Total Pore Volume(cm3/g)": {
+    "min": 0.02,
+    "max": 3.09,
+    "median": 0.685
+  },
+  "Micropore Volume (cm3/g)": {
+    "min": 0.04,
+    "max": 1.29,
+    "median": 0.48
+  },
+  "C (%)": {
+    "min": 40.4,
+    "max": 96.96,
+    "median": 79.10499999999999
+  },
+  "H (%)": {
+    "min": 0.0,
+    "max": 6.01,
+    "median": 1.5
+  },
+  "N (%)": {
+    "min": 0.0,
+    "max": 38.15,
+    "median": 2.1500000000000004
+  },
+  "O (%)": {
+    "min": 0.0,
+    "max": 54.0,
+    "median": 15.425
+  },
+  "S (%)": {
+    "min": 0.0,
+    "max": 13.2,
+    "median": 0.0
+  },
+  "Temp (\u00b0C)": {
+    "min": 0.0,
+    "max": 30.0,
+    "median": 25.0
+  },
+  "Pressure (bar)": {
+    "min": 0.1,
+    "max": 1.01325,
+    "median": 1.0
+  }
+}

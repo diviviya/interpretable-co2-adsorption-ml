@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Biomass Selection Gate — CO₂ Uptake Decision Support</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .gate-hero {
+      background: linear-gradient(135deg, #1f4d3a 0%, #153427 100%);
+      color: #fff;
+      padding: 32px 24px;
+      border-radius: var(--radius);
+      margin-top: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 18px rgba(31, 77, 58, 0.15);
+    }
+    .gate-hero h1 { margin: 0 0 8px; font-size: clamp(1.6rem, 3.5vw, 2.2rem); font-weight: 700; color: #fff; }
+    .gate-hero p { margin: 0; color: #c8ded1; max-width: 760px; font-size: 1.02rem; line-height: 1.55; }
+    .gate-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .preset-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .preset-btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+      border-color: #fff;
+    }
+    .gate-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .metric-label { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+    .metric-val { font-size: 1.8rem; font-weight: 700; color: var(--ink); margin-top: 4px; }
+    .metric-sub { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+
+    .candidate-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 18px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      position: relative;
+    }
+    .candidate-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+    }
+    .candidate-card.is-approved {
+      border-left: 6px solid var(--ok);
+    }
+    .candidate-card.is-rejected {
+      border-left: 6px solid var(--error);
+      opacity: 0.92;
+    }
+    .candidate-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .candidate-title { font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--ink); }
+    .candidate-class {
+      display: inline-block;
+      font-size: 0.78rem;
+      background: var(--green-soft);
+      color: var(--green);
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .status-pill {
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-pill.approved {
+      background: var(--ok-bg);
+      color: var(--ok);
+      border: 1px solid rgba(27, 122, 67, 0.25);
+    }
+    .status-pill.rejected {
+      background: var(--error-bg);
+      color: var(--error);
+      border: 1px solid rgba(180, 35, 24, 0.25);
+    }
+    .candidate-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      background: #f8faf7;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 14px 0;
+      border: 1px solid #edf0ea;
+    }
+    .stat-item .stat-lbl { font-size: 0.75rem; color: var(--muted); }
+    .stat-item .stat-num { font-size: 1.05rem; font-weight: 600; color: var(--ink); }
+
+    .elemental-spec-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: #f4f8f5;
+      border: 1px solid #d8e5dc;
+      border-radius: 8px;
+      padding: 9px 14px;
+      margin: 10px 0 12px;
+      font-size: 0.86rem;
+    }
+    .elemental-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--green);
+      font-weight: 600;
+    }
+    .elemental-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .elem-badge {
+      background: #ffffff;
+      border: 1px solid #cedcd2;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      color: #2c3a32;
+      font-family: var(--mono);
+    }
+    .elem-badge .elem-sym {
+      font-weight: 700;
+      color: var(--green);
+      margin-right: 2px;
+    }
+    .elem-badge.highlight-n {
+      background: #eef6fc;
+      border-color: #bcd9ef;
+      color: #1a4f78;
+    }
+    .elem-badge.highlight-n .elem-sym {
+      color: #1a4f78;
+    }
+    .elem-badge.ratio-badge {
+      background: #fbf5e6;
+      border-color: #ebdcb2;
+      color: #7a5814;
+    }
+
+    .candidate-guidance {
+      background: #fffbf2;
+      border: 1px solid #fae6be;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.92rem;
+      color: #684200;
+      margin-top: 12px;
+      line-height: 1.5;
+    }
+    .candidate-guidance.approved {
+      background: #f1f8f3;
+      border-color: #c9e8d3;
+      color: #17542e;
+    }
+    .candidate-advantages {
+      margin: 10px 0 0;
+      padding-left: 20px;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+    .candidate-advantages li { margin-bottom: 3px; }
+
+    .diff-callout {
+      background: #ffffff;
+      border: 1px dashed #c0d1c7;
+      border-radius: var(--radius);
+      padding: 20px;
+      margin: 30px 0;
+    }
+    .diff-callout h3 { margin: 0 0 6px; color: var(--green); font-size: 1.05rem; }
+    .diff-callout p { margin: 0; font-size: 0.92rem; color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <header class="site-nav" id="site-nav"></header>
+
+  <main class="wrap">
+    <!-- Top Hero Banner -->
+    <div class="gate-hero">
+      <div class="gate-badge">Novel Innovation • Material Gatekeeper</div>
+      <h1>Biomass Sorbent Selection Gate</h1>
+      <p>
+        A target-driven decision-support gatekeeper that replaces passive curve prediction with active material screening.
+        Specify your operating flue gas constraints and target CO₂ capacity; the gate screens real-world biomass precursors, predicts performance, and issues definitive <strong>APPROVED</strong> or <strong>GATED OUT</strong> decisions with targeted synthesis recipes.
+      </p>
+
+      <div class="preset-container">
+        <span style="font-size: 0.85rem; color: #a4c4b2; align-self: center;">Quick Flue Gas Presets:</span>
+        <button type="button" class="preset-btn" onclick="applyPreset(50, 0.15, 2.5)">Post-Combustion Coal/Gas (50°C, 0.15 bar, 2.5 mmol/g)</button>
+        <button type="button" class="preset-btn" onclick="applyPreset(25, 1.0, 3.0)">Ambient Pressure Flue (25°C, 1.0 bar, 3.0 mmol/g)</button>
+        <button type="button" class="preset-btn" onclick="applyPreset(35, 5.0, 4.5)">High-Pressure Syngas (35°C, 5.0 bar, 4.5 mmol/g)</button>
+        <button type="button" class="preset-btn" onclick="applyPreset(20, 0.05, 1.8)">Direct Air Capture (20°C, 0.05 bar, 1.8 mmol/g)</button>
+      </div>
+    </div>
+
+    <!-- Interactive Parameter Form -->
+    <form id="gate-form" class="card" style="margin-bottom: 24px;">
+      <h2>Operating Conditions &amp; Gating Thresholds</h2>
+      <p class="sub">Adjust your application requirements to trigger multi-candidate screening and synthesis matchmaking.</p>
+
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px;">
+        <div class="field">
+          <label for="target_uptake">Target CO₂ Uptake <span class="unit">(mmol/g)</span></label>
+          <input type="number" id="target_uptake" step="0.1" min="0.1" max="25" value="3.0" required>
+          <span class="hint">Minimum acceptable capacity threshold</span>
+        </div>
+
+        <div class="field">
+          <label for="temperature">Flue Gas Temperature <span class="unit">(°C)</span></label>
+          <input type="number" id="temperature" step="1" min="-20" max="400" value="25" required>
+          <span class="hint">Operating adsorption temperature</span>
+        </div>
+
+        <div class="field">
+          <label for="pressure">Adsorption Pressure <span class="unit">(bar)</span></label>
+          <input type="number" id="pressure" step="0.01" min="0.01" max="50" value="1.0" required>
+          <span class="hint">Gas contact / flue partial pressure</span>
+        </div>
+
+        <div class="field">
+          <label for="precursor_filter">Filter Precursor Class</label>
+          <select id="precursor_filter" style="width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fbfcfa;">
+            <option value="all">All Biomass Benchmarks (9 Diverse Precursors)</option>
+            <option value="bamboo-biochar">Vascular Bamboo Biochar (High Capacity)</option>
+            <option value="walnut-shell">Walnut Shell Activated Carbon (High Hardness)</option>
+            <option value="coconut-shell">Coconut Shell Activated Carbon (High Micropores)</option>
+            <option value="sugarcane-bagasse">Sugarcane Bagasse Biochar (Sugar Mill Agro-Waste)</option>
+            <option value="chitosan-biochar">Nitrogen-Enriched Chitosan Biochar (Marine Waste)</option>
+            <option value="coffee-grounds">Spent Coffee Grounds Biochar (Urban Food Waste)</option>
+            <option value="microalgae-biochar">Spirulina Microalgae Biochar (Natural 7.8% N)</option>
+            <option value="rice-husk">Agricultural Rice Husk Biochar (Silica-Carbon)</option>
+            <option value="pine-sawdust">Pine Sawdust Pyrolysis Carbon (Forestry Baseline)</option>
+          </select>
+          <span class="hint">Screen entire catalog or inspect one</span>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top: 20px; display: flex; gap: 12px;">
+        <button type="submit" class="btn primary" id="screen-btn" style="background: var(--green); color: #fff; padding: 10px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+          Run Selection Gatekeeper
+        </button>
+        <button type="button" class="btn ghost" id="reset-btn" onclick="applyPreset(25, 1.0, 3.0)" style="background: transparent; border: 1px solid var(--line); padding: 10px 18px; border-radius: 8px; cursor: pointer;">
+          Reset to Standard
+        </button>
+      </div>
+    </form>
+
+    <!-- KPI Summary Row -->
+    <div id="gate-summary-row" class="gate-metrics" hidden>
+      <div class="metric-card">
+        <span class="metric-label">Screened Precursors</span>
+        <span class="metric-val" id="kpi-total">0</span>
+        <span class="metric-sub">Evaluated in parallel (&lt;10ms)</span>
+      </div>
+      <div class="metric-card" style="border-top: 3px solid var(--ok);">
+        <span class="metric-label">Approved Candidates</span>
+        <span class="metric-val" id="kpi-approved" style="color: var(--ok);">0</span>
+        <span class="metric-sub">Cleared threshold &amp; viable</span>
+      </div>
+      <div class="metric-card" style="border-top: 3px solid var(--error);">
+        <span class="metric-label">Gated Out</span>
+        <span class="metric-val" id="kpi-rejected" style="color: var(--error);">0</span>
+        <span class="metric-sub">Requires synthesis modification</span>
+      </div>
+      <div class="metric-card" style="border-top: 3px solid var(--accent);">
+        <span class="metric-label">Top Recommendation</span>
+        <span class="metric-val" id="kpi-top" style="font-size: 1.15rem; line-height: 1.3; color: var(--green);">None</span>
+        <span class="metric-sub">Highest predicted capacity</span>
+      </div>
+    </div>
+
+    <!-- Candidate Results List -->
+    <div id="candidates-container">
+      <div class="card" style="text-align: center; padding: 40px; color: var(--muted);">
+        <p style="font-size: 1.05rem; margin: 0;">Click <strong>Run Selection Gatekeeper</strong> above to screen biomass precursors against your operating criteria.</p>
+      </div>
+    </div>
+
+    <!-- What Makes this Different Callout -->
+    
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/mock.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    renderNav("selector");
+
+    function applyPreset(temp, press, target) {
+      $("temperature").value = temp;
+      $("pressure").value = press;
+      $("target_uptake").value = target;
+      runGate();
+    }
+
+    async function runGate() {
+      const btn = $("screen-btn");
+      const targetVal = parseFloat($("target_uptake").value);
+      const tempVal = parseFloat($("temperature").value);
+      const pressVal = parseFloat($("pressure").value);
+      const filterVal = $("precursor_filter").value;
+
+      if (!targetVal || isNaN(targetVal) || targetVal <= 0) {
+        alert("Please enter a valid target uptake > 0 mmol/g.");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Screening Precursors...";
+
+      try {
+        const payload = {
+          target_uptake: targetVal,
+          temperature: tempVal,
+          pressure: pressVal,
+          precursor_filter: filterVal
+        };
+
+        let data;
+        if (typeof API !== "undefined" && API.runSelectionGate) {
+          try {
+            data = await API.runSelectionGate(payload);
+          } catch (e) {
+            console.warn("Backend API call failed, falling back to mock calculator:", e);
+            data = await MOCK.runSelectionGate(payload);
+          }
+        } else if (typeof MOCK !== "undefined" && MOCK.runSelectionGate) {
+          data = await MOCK.runSelectionGate(payload);
+        } else {
+          throw new Error("Selection gate calculator not loaded.");
+        }
+
+        renderResults(data);
+      } catch (err) {
+        alert("Selection Gate error: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Run Selection Gatekeeper";
+      }
+    }
+
+    function renderResults(data) {
+      const summary = data.summary;
+      const candidates = data.candidates;
+
+      $("gate-summary-row").hidden = false;
+      $("kpi-total").textContent = summary.total_screened;
+      $("kpi-approved").textContent = summary.approved_count;
+      $("kpi-rejected").textContent = summary.rejected_count;
+      $("kpi-top").textContent = summary.top_recommended || "None Cleared Gate";
+
+      const container = $("candidates-container");
+      if (!candidates || candidates.length === 0) {
+        container.innerHTML = `<div class="card"><p>No precursors matched the criteria.</p></div>`;
+        return;
+      }
+
+      container.innerHTML = candidates.map(c => {
+        const isApproved = c.passed;
+        const statusClass = isApproved ? "approved" : "rejected";
+        const cardClass = isApproved ? "is-approved" : "is-rejected";
+        const sign = c.delta >= 0 ? "+" : "";
+
+        return `
+          <div class="candidate-card ${cardClass}">
+            <div class="candidate-header">
+              <div>
+                <span class="candidate-title">${escapeHtml(c.name)}</span>
+                <span class="candidate-class">${escapeHtml(c.class)}</span>
+              </div>
+              <div>
+                <span class="status-pill ${statusClass}">
+                  ${isApproved ? "✔ APPROVED" : "✖ GATED OUT"}
+                </span>
+              </div>
+            </div>
+
+            <div class="candidate-stats">
+              <div class="stat-item">
+                <div class="stat-lbl">Predicted Uptake</div>
+                <div class="stat-num" style="color: ${isApproved ? "var(--ok)" : "var(--error)"};">
+                  ${fmt(c.predicted_uptake)} <span style="font-size: 0.8rem; font-weight: normal;">mmol/g</span>
+                </div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-lbl">Target Margin</div>
+                <div class="stat-num">
+                  ${sign}${fmt(c.delta)} (${sign}${c.delta_pct}%)
+                </div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-lbl">Surface Area (S<sub>BET</sub>)</div>
+                <div class="stat-num">${fmt(c.surface_area, 0)} m²/g</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-lbl">Micropore Vol (V<sub>micro</sub>)</div>
+                <div class="stat-num">${fmt(c.micropore_volume, 2)} cm³/g</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-lbl">Nitrogen Sites (N%)</div>
+                <div class="stat-num">${fmt(c.nitrogen_pct, 1)}%</div>
+              </div>
+            </div>
+
+            <!-- Elemental Composition Spec -->
+            <div class="elemental-spec-row">
+              <div class="elemental-title">
+                <span>🧪</span>
+                <strong>Lab Elemental Target (CHNS-O Spec):</strong>
+              </div>
+              <div class="elemental-badges">
+                <span class="elem-badge" title="Carbon backbone (aromatic matrix)"><span class="elem-sym">C</span> <strong>${fmt(c.carbon, 1)}%</strong></span>
+                <span class="elem-badge" title="Hydrogen"><span class="elem-sym">H</span> <strong>${fmt(c.hydrogen, 1)}%</strong></span>
+                <span class="elem-badge ${c.nitrogen >= 2.0 ? 'highlight-n' : ''}" title="Nitrogen Lewis-base affinity sites"><span class="elem-sym">N</span> <strong>${fmt(c.nitrogen, 1)}%</strong></span>
+                <span class="elem-badge" title="Oxygen functional groups"><span class="elem-sym">O</span> <strong>${fmt(c.oxygen, 1)}%</strong></span>
+                <span class="elem-badge" title="Sulfur"><span class="elem-sym">S</span> <strong>${fmt(c.sulfur, 1)}%</strong></span>
+                <span class="elem-badge ratio-badge" title="H/C molar ratio indicates degree of carbonization/aromaticity">H/C: <strong>${((c.hydrogen / 1.008) / (c.carbon / 12.011)).toFixed(2)}</strong></span>
+              </div>
+            </div>
+
+            <div class="candidate-guidance ${isApproved ? "approved" : ""}">
+              <strong>${isApproved ? "Synthesis Recommendation:" : "Gate Filter Diagnosis:"}</strong>
+              ${escapeHtml(c.guidance)}
+            </div>
+
+            <ul class="candidate-advantages">
+              ${c.advantages.map(a => `<li>${escapeHtml(a)}</li>`).join("")}
+            </ul>
+          </div>
+        `;
+      }).join("");
+    }
+
+    $("gate-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      runGate();
+    });
+
+    // Auto-run on page load with default conditions
+    document.addEventListener("DOMContentLoaded", function() {
+      runGate();
+    });
+  </script>
+</body>
+</html>

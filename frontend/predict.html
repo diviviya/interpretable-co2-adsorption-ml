@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Predict · CO₂ Uptake Predictor</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-nav" id="site-nav"></header>
+
+  <main class="wrap">
+    <div class="page-head">
+      <h1>Predict CO₂ uptake</h1>
+      <p>Enter a biomass-derived carbon's structure, composition and test conditions. The model estimates how much CO₂ it adsorbs and explains which inputs drove the estimate.</p>
+    </div>
+
+    <!-- Selection Gate Spotlight Banner -->
+    <div style="background: #e6efe9; border-left: 4px solid #1f4d3a; border-radius: 8px; padding: 14px 18px; margin: 18px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 8px rgba(31,77,58,0.06);">
+      <div style="font-size: 0.94rem; color: #17231d; max-width: 780px;">
+        <strong style="color: #1f4d3a;">Novel Differentiator: Biomass Selection Gatekeeper</strong> &mdash; Rather than testing materials one by one, enter your flue gas constraints (T, P) and target capacity to automatically screen 5 benchmark bio-precursors and receive instant APPROVED/REJECTED verdicts with synthesis recipes.
+      </div>
+      <a href="selector.html" class="btn primary" style="background: #1f4d3a; color: #fff; font-size: 0.88rem; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: 600; white-space: nowrap;">Open Selection Gate &rarr;</a>
+    </div>
+
+    <div class="layout">
+      <form id="predict-form" novalidate>
+        <div id="load-alert" class="alerts" hidden></div>
+
+        <fieldset>
+          <legend><span class="step">1</span> Material structure</legend>
+          <div class="grid" id="group-structure"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="step">2</span> Elemental composition</legend>
+          <div class="grid" id="group-composition"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="step">3</span> Test conditions</legend>
+          <div class="grid" id="group-conditions"></div>
+          <p class="note">The training data covers only a few temperatures and pressures, so values between or beyond them are less certain.</p>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit" class="btn primary" id="predict-btn">Predict uptake</button>
+          <button type="button" class="btn ghost" id="example-btn">Fill typical values</button>
+          <button type="reset" class="btn ghost">Clear</button>
+        </div>
+      </form>
+
+      <!-- Page B part 1: the prediction -->
+      <aside class="result" aria-live="polite">
+        <div id="result-empty">
+          <p class="label-caps">Predicted CO₂ uptake</p>
+          <p class="muted">Fill in the inputs and press <strong>Predict uptake</strong>.</p>
+        </div>
+        <div id="result-body" hidden>
+          <p class="label-caps">Predicted CO₂ uptake <span class="badge mock" id="mock-badge" hidden>Demo data</span></p>
+          <p class="value"><span id="result-value">–</span> <span class="value-unit">mmol/g</span></p>
+          <p class="muted" id="result-meta"></p>
+          <ul class="alerts" id="result-alerts"></ul>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Page B part 2: the SHAP explanation -->
+    <section class="card" id="explain" hidden>
+      <h2>Why the model predicted this</h2>
+      <p class="sub">Each bar shows how much one input moved this prediction away from the model's average.</p>
+      <div class="shap-legend">
+        <span><span class="swatch pos"></span>Pushes uptake up</span>
+        <span><span class="swatch neg"></span>Pushes uptake down</span>
+      </div>
+      <div id="shap-chart"></div>
+      <p class="shap-sum" id="shap-sum"></p>
+      <div class="callout" id="shap-text"></div>
+      <p class="note">These contributions describe how <em>the model</em> reached its number. They are not proof that changing an input would change real-world CO₂ uptake by that amount.</p>
+    </section>
+  </main>
+
+  <footer class="foot wrap" id="foot"></footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/mock.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/predict.js"></script>
+</body>
+</html>

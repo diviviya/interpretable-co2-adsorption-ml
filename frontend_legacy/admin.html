@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Console · CO₂ Adsorption</title><link rel="stylesheet" href="css/style.css">
+  <style>
+    .admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.admin-panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--card-shadow)}
+    .admin-panel h2{font-size:18px;margin-bottom:8px}.admin-panel p{font-size:13px;color:var(--muted);margin-bottom:16px}.admin-panel input,.admin-panel select{width:100%;padding:11px;border:1px solid var(--line);border-radius:8px;margin:8px 0 14px;background:#fff}
+    .admin-panel button{border:0;border-radius:8px;padding:11px 16px;background:var(--green);color:#fff;font-weight:700;cursor:pointer}.admin-panel button:disabled{opacity:.5;cursor:wait}.status{font-size:13px;margin-top:12px;white-space:pre-wrap}.model-row{border-top:1px solid var(--line);padding:14px 0;display:flex;justify-content:space-between;gap:12px;align-items:center}.model-row small{display:block;color:var(--muted)}.pill{font-size:11px;padding:3px 8px;border-radius:20px;background:var(--soft);color:var(--green)}
+    @media(max-width:760px){.admin-grid{grid-template-columns:1fr}.topbar{height:auto;padding:14px;gap:12px;flex-wrap:wrap}}
+  </style>
+</head>
+<body>
+<header class="topbar"><a href="index.html" class="brand"><div class="logo">CO₂</div><div><b>CO₂ Adsorption Predictor</b><small>Administrator Console</small></div></a><nav><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="prediction.html">Prediction</a></li><li><a href="admin.html" class="active">Admin</a></li></ul></nav><button type="button" class="nav-badge" onclick="logout()" aria-label="Log out of your account">Log out</button></header>
+<main>
+  <p class="eyebrow">MODEL LIFECYCLE MANAGEMENT</p><h1>Administrator Console</h1><p class="lead" style="margin:8px 0 26px">Upload labelled datasets, run model training, review candidate versions and control which model serves predictions.</p>
+  <div id="auth-status" class="panel" style="padding:14px;margin-bottom:20px">Checking administrator access…</div>
+  <div class="admin-grid">
+    <section class="admin-panel"><h2>1. Upload training dataset</h2><p>CSV must contain all ten feature columns and the CO₂ uptake target. Maximum size: 15 MB.</p><input id="dataset-file" type="file" accept=".csv"><button id="upload-btn">Validate and upload</button><div id="upload-status" class="status"></div></section>
+    <section class="admin-panel"><h2>2. Start model training</h2><p>Training uses a fresh 80/20 train/validation split. The original research test set is not used.</p><label for="dataset-select">Uploaded dataset</label><select id="dataset-select"><option value="">Upload a dataset first</option></select><button id="train-btn" disabled>Start training</button><div id="training-status" class="status"></div></section>
+    <section class="admin-panel" style="grid-column:1/-1" id="analytics-panel">
+      <h2>3. Project analytics</h2>
+      <p>Live statistics calculated from the project dataset, prediction history, training jobs and model registry.</p>
+      <div id="analytics-status" class="status">Loading analytics…</div>
+      <div id="analytics-content"></div>
+    </section>
+    <section class="admin-panel" style="grid-column:1/-1"><h2>4. Model versions</h2><p>Only candidates with loadable artifacts can be activated. Activation changes the model used for subsequent predictions.</p><div id="models-list">Loading model registry…</div></section>
+  </div>
+</main>
+<script src="js/main.js"></script>
+<script src="js/admin.js"></script>
+</body></html>

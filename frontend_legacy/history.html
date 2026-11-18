@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prediction History · CO₂ Adsorption</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .history-wrap{max-width:1100px;margin:36px auto;padding:0 20px}
+    .history-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px}
+    .history-table{width:100%;border-collapse:collapse;min-width:560px}
+    .history-table th,.history-table td{text-align:left;padding:14px 12px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
+    .history-table th{color:var(--muted);font-weight:700;background:#f7f9f7}
+    .history-table td strong{white-space:nowrap}
+    .history-scroll{overflow-x:auto}
+    .history-state{padding:28px;text-align:center;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="brand"><div class="logo">CO₂</div><div><b>CO₂ Adsorption Predictor</b><small>Biomass-Derived Porous Carbons</small></div></a>
+    <nav><ul class="nav-links"><li><a href="prediction.html">Prediction</a></li><li><a href="history.html" class="active">My History</a></li></ul></nav>
+    <button type="button" class="light" onclick="logout()">Log out</button>
+  </header>
+  <main class="history-wrap">
+    <p class="eyebrow">YOUR ACCOUNT</p><h1>Prediction History</h1>
+    <p class="lead">A record of predictions made using your account.</p>
+    <section class="history-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <h2 style="font-size:19px">Recent predictions</h2><button id="refresh-history" class="light" type="button">Refresh</button>
+      </div>
+      <div id="history-status" class="history-state">Loading your history…</div>
+      <div id="history-table-wrap" class="history-scroll" hidden></div>
+    </section>
+  </main>
+  <script src="js/main.js"></script><script src="js/history.js"></script>
+</body>
+</html>

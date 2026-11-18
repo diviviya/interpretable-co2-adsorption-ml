@@ -1,77 +1,302 @@
-const token = localStorage.getItem('co2_access_token');
-const authStatus = document.getElementById('auth-status');
-const datasetSelect = document.getElementById('dataset-select');
-const uploadButton = document.getElementById('upload-btn');
-const trainButton = document.getElementById('train-btn');
-const headers = () => ({'Authorization': `Bearer ${token}`});
-let uploadedDataset = null;
+// =====================================================================
+// admin.js — dataset upload, training, and model version management.
+// Every admin request carries the admin key; the BACKEND must reject
+// requests without a valid key. This page only makes the job convenient.
+// =====================================================================
 
-async function api(path, options={}) {
-  const response = await fetch(path, {...options, headers:{...headers(), ...(options.headers || {})}});
-  const data = await response.json().catch(()=>({}));
-  if (!response.ok) throw new Error(data.detail || `Request failed (${response.status})`);
-  return data;
+renderNav("admin");
+$("target-name").textContent = TARGET;
+
+const REQUIRED = [...FEATURE_COLUMNS, TARGET];
+let chosenFile = null;
+let validated = null;   // server's validation result for the uploaded dataset
+let pollTimer = null;   // repeating check on the running training job
+
+// ---------- Login ----------
+// The key lives only in this variable: it is gone when the page closes.
+let adminKey = "";
+const key = () => adminKey;
+
+if (CONFIG.USE_MOCK) {
+  $("login-sub").textContent = "Demo mode: any key is accepted. With the real backend, the key is checked by the server and you'll need to log in again after leaving this page.";
 }
-async function initialise() {
-  if (!token) { authStatus.textContent = 'You are not signed in. Please sign in with an administrator account.'; return; }
-  try { const me = await api('/api/auth/me'); if(me.role !== 'admin') throw new Error('This account does not have administrator privileges.'); authStatus.textContent = `Signed in as ${me.username} · Administrator access verified.`; await loadModels(); await loadAnalytics(); }
-  catch(error){ authStatus.textContent = error.message; }
+
+function alerts(id, items) {
+  $(id).innerHTML = items.map(([kind, t]) => `<li class="${kind}">${escapeHtml(t)}</li>`).join("");
 }
-uploadButton.addEventListener('click', async () => {
-  const file = document.getElementById('dataset-file').files[0]; const status = document.getElementById('upload-status');
-  if(!file){status.textContent='Choose a CSV file first.';return;}
-  uploadButton.disabled=true; status.textContent='Uploading and validating…';
-  try { const form = new FormData(); form.append('file',file); const data=await api('/api/admin/datasets',{method:'POST',body:form}); uploadedDataset=data.report.stored_filename; datasetSelect.innerHTML=''; const option=document.createElement('option'); option.value=uploadedDataset; option.textContent=`${data.report.filename} (${data.report.row_count} rows)`; datasetSelect.append(option); trainButton.disabled=false; status.textContent=`Validated ${data.report.row_count} rows. Missing feature values are permitted and will be imputed during training.`; }
-  catch(error){status.textContent=error.message;} finally{uploadButton.disabled=false;}
+
+function showTools(loggedIn) {
+  $("login-card").hidden = loggedIn;
+  $("admin-tools").hidden = !loggedIn;
+}
+
+function logout(message) {
+  adminKey = "";
+  clearTimeout(pollTimer);
+  $("admin-key").value = "";
+  showTools(false);
+  alerts("login-alerts", message ? [["error", message]] : []);
+  $("admin-key").focus();
+}
+
+$("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const typed = $("admin-key").value.trim();
+  if (!typed) { alerts("login-alerts", [["error", "Enter the admin key."]]); return; }
+  const btn = $("login-btn");
+  busy(btn, "Checking…");
+  try {
+    await API.adminLogin(typed);   // the backend decides whether the key is valid
+    adminKey = typed;
+    alerts("login-alerts", []);
+    showTools(true);
+    loadVersions();
+  } catch (err) {
+    alerts("login-alerts", [["error", /authoris/i.test(err.message) ? "Invalid admin key." : err.message]]);
+  } finally {
+    idle(btn);
+  }
 });
-trainButton.addEventListener('click', async () => {
-  const status=document.getElementById('training-status'); if(!uploadedDataset){status.textContent='Upload a dataset first.';return;}
-  trainButton.disabled=true; status.textContent='Starting training…';
-  try { const started=await api('/api/admin/train',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dataset_name:uploadedDataset})}); const jobId=started.job.job_id; let done=false;
-    while(!done){ await new Promise(resolve=>setTimeout(resolve,1800)); const job=await api(`/api/admin/training/${jobId}`); status.textContent=`${job.status.toUpperCase()} · ${job.progress_pct}% · ${job.stage || ''}`; if(job.status==='completed'){status.textContent=`Training complete. Candidate: ${job.candidate_version}\nValidation metrics: ${JSON.stringify(job.metrics,null,2)}\nThis is a validation result, not an independent test result.`;done=true;await loadModels();} else if(job.status==='failed'){throw new Error(job.error || 'Training failed');} }
-  } catch(error){status.textContent=error.message;} finally{trainButton.disabled=false;}
+
+$("logout-btn").addEventListener("click", () => logout());
+
+// If the backend rejects the key later (e.g. it was changed), go back to login.
+API.onAuthError(() => logout("Your admin session was rejected by the server. Please log in again."));
+
+// Admin actions only run while logged in.
+function needKey() {
+  return !adminKey;
+}
+
+function busy(btn, label) {
+  btn.disabled = true;
+  btn.dataset.label = btn.textContent;
+  btn.innerHTML = `<span class="spinner"></span> ${label}`;
+}
+function idle(btn) {
+  btn.disabled = false;
+  btn.textContent = btn.dataset.label;
+}
+
+// ---------- 1. Dataset: local checks + preview ----------
+async function handleFile(file) {
+  chosenFile = null;
+  validated = null;
+  $("local-preview").hidden = true;
+  $("validation").hidden = true;
+  updateTrainButton();
+  $("file-name").textContent = file ? file.name : "";
+
+  const problem = checkCsvFile(file);
+  if (problem) { alerts("file-alerts", [["error", problem]]); return; }
+
+  let parsed;
+  try { parsed = parseCSV(await file.text()); }
+  catch { alerts("file-alerts", [["error", "Couldn't read this file as text."]]); return; }
+
+  const missing = REQUIRED.filter((c) => !parsed.columns.includes(c));
+  const notes = [[missing.length ? "error" : "ok",
+    missing.length ? "Missing columns (names must match exactly): " + missing.join(", ")
+                   : `${parsed.rows.length} rows and all ${REQUIRED.length} required columns found.`]];
+  alerts("file-alerts", notes);
+  if (missing.length || !parsed.rows.length) return;
+
+  chosenFile = file;
+  const shown = parsed.rows.slice(0, 8);
+  $("preview-sub").textContent = `Preview: first ${shown.length} of ${parsed.rows.length} rows.`;
+  $("preview-table").innerHTML = `<table><thead><tr>${REQUIRED.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead>
+    <tbody>${shown.map((r) => `<tr>${REQUIRED.map((c) => `<td>${escapeHtml(r[c])}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  $("local-preview").hidden = false;
+}
+
+$("file").addEventListener("change", (e) => handleFile(e.target.files[0]));
+const drop = $("drop");
+drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("is-over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("is-over"));
+drop.addEventListener("drop", (e) => {
+  e.preventDefault();
+  drop.classList.remove("is-over");
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 });
-async function loadModels(){
-  const container=document.getElementById('models-list');
-  try {const data=await api('/api/admin/models');container.innerHTML='';
-    data.models.forEach(model=>{const row=document.createElement('div');row.className='model-row';const info=document.createElement('div');const name=document.createElement('b');name.textContent=model.name || model.version;const detail=document.createElement('small');detail.textContent=`${model.version} · ${model.status} · ${model.metrics ? `R² ${model.metrics.R2 ?? 'N/A'} / RMSE ${model.metrics.RMSE ?? 'N/A'}` : 'Metrics unavailable'}`;info.append(name,detail);const action=document.createElement('div');const badge=document.createElement('span');badge.className='pill';badge.textContent=model.status.toUpperCase();action.append(badge);
-      if(model.status!=='active' && model.artifact_path){const button=document.createElement('button');button.textContent='Activate';button.style.marginLeft='10px';button.addEventListener('click',async()=>{if(!confirm(`Activate ${model.version}? New predictions will use this model.`))return;try{await api(`/api/admin/models/${encodeURIComponent(model.version)}/activate`,{method:'POST'});await loadModels();}catch(e){alert(e.message);}});action.append(button);} row.append(info,action);container.append(row);});
-  }catch(error){container.textContent=error.message;}
-}
-initialise();
 
+// ---------- 1b. Upload and show the server's validation ----------
+$("upload-btn").addEventListener("click", async () => {
+  if (!chosenFile || needKey()) return;
+  const btn = $("upload-btn");
+  busy(btn, "Uploading…");
+  try {
+    const res = await API.uploadDataset(chosenFile, key());
+    validated = res;
+    showValidation(res);
+  } catch (err) {
+    validated = null;
+    $("validation").hidden = false;
+    $("val-stats").innerHTML = "";
+    $("missing-table").hidden = true;
+    alerts("val-alerts", [["error", err.message]]);
+  } finally {
+    idle(btn);
+    updateTrainButton();
+  }
+});
 
-async function loadAnalytics(){
-  const status=document.getElementById('analytics-status');
-  const content=document.getElementById('analytics-content');
-  if(!status || !content) return;
-  status.textContent='Fetching current project statistics…';
-  try{
-    const data=await api('/api/admin/analytics');
-    const d=data.dataset, a=data.activity, m=data.models;
-    content.innerHTML='';
-    const cards=document.createElement('div');
-    cards.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:14px 0 22px';
-    const addCard=(label,value)=>{const el=document.createElement('div');el.style.cssText='background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:14px';const small=document.createElement('small');small.textContent=label;small.style.cssText='display:block;color:var(--muted);font-size:12px';const strong=document.createElement('strong');strong.textContent=value;strong.style.cssText='display:block;font-size:23px;margin-top:5px';el.append(small,strong);cards.append(el);};
-    addCard('Dataset rows',d.available?d.row_count:'Unavailable');
-    addCard('Features',d.feature_count);
-    addCard('Predictions recorded',a.prediction_count);
-    addCard('Training jobs',a.training_job_count);
-    addCard('Uploaded datasets',a.uploaded_dataset_count);
-    addCard('Model versions',m.registered_versions);
-    content.append(cards);
-    const heading=(text)=>{const h=document.createElement('h3');h.textContent=text;h.style.cssText='font-size:15px;margin:18px 0 9px';content.append(h);};
-    const table=(headers,rows)=>{const t=document.createElement('table');t.style.cssText='width:100%;border-collapse:collapse;font-size:12px';const thead=document.createElement('thead');const hr=document.createElement('tr');headers.forEach(x=>{const th=document.createElement('th');th.textContent=x;th.style.cssText='text-align:left;padding:8px;border-bottom:1px solid var(--line)';hr.append(th)});thead.append(hr);t.append(thead);const tb=document.createElement('tbody');rows.forEach(row=>{const tr=document.createElement('tr');row.forEach(x=>{const td=document.createElement('td');td.textContent=x??'—';td.style.cssText='padding:8px;border-bottom:1px solid var(--line)';tr.append(td)});tb.append(tr)});t.append(tb);content.append(t);};
-    heading('CO₂ uptake distribution');
-    if(d.target_stats){const st=d.target_stats;table(['Mean','Median','Minimum','Maximum','Std. deviation','Missing'],[[st.mean,st.median,st.min,st.max,st.std,st.missing].map(String)]);}
-    if(d.target_distribution?.length){const max=Math.max(...d.target_distribution.map(x=>x.count),1);const chart=document.createElement('div');chart.style.cssText='display:grid;gap:8px;margin:12px 0 20px';d.target_distribution.forEach(bin=>{const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:minmax(130px,1fr) 3fr 38px;gap:9px;align-items:center;font-size:12px';const label=document.createElement('span');label.textContent=bin.range;const track=document.createElement('div');track.style.cssText='height:12px;background:var(--soft);border-radius:8px;overflow:hidden';const bar=document.createElement('div');bar.style.cssText=`height:100%;width:${bin.count/max*100}%;background:var(--green);border-radius:8px`;track.append(bar);const count=document.createElement('span');count.textContent=bin.count;row.append(label,track,count);chart.append(row)});content.append(chart);}
-    heading('Feature data quality');
-    table(['Feature','Missing values','Mean','Minimum','Maximum'],(d.feature_quality||[]).map(x=>[x.feature,x.missing,x.mean,x.min,x.max].map(v=>String(v??'—'))));
-    heading('System and model status');
-    table(['Metric','Current value'],[['Active model',m.active_version||'Not set'],['Candidate models',m.candidate_versions],['Completed training jobs',a.completed_training_jobs],['Failed training jobs',a.failed_training_jobs]]);
-    heading('Recent administrator activity');
-    if(data.recent_activity?.length)table(['Time','Administrator','Action','Details'],data.recent_activity.map(x=>[x.timestamp,x.username,x.action,x.details]));
-    else {const empty=document.createElement('p');empty.textContent='No administrator activity recorded yet.';content.append(empty);}
-    status.textContent=d.available?'Analytics updated from the current project data and activity records.':'Activity loaded; project dataset file was not found.';
-  }catch(error){status.textContent=`Could not load analytics: ${error.message}`;}
+function showValidation(res) {
+  $("validation").hidden = false;
+  $("val-mock").hidden = !res.mock;
+  const missingTotal = Object.values(res.missing_values || {}).reduce((a, b) => a + b, 0);
+  $("val-stats").innerHTML = [
+    ["Rows", res.rows],
+    ["Columns", (res.columns || []).length],
+    ["Missing cells", missingTotal],
+    ["Duplicate rows", res.duplicate_rows],
+  ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${escapeHtml(v)}</div></div>`).join("");
+
+  const items = (res.errors || []).map((e) => ["error", e]);
+  if (res.duplicate_rows) items.push(["", `${res.duplicate_rows} duplicate row${res.duplicate_rows === 1 ? "" : "s"} found. The pipeline removes duplicates before training.`]);
+  if (missingTotal) items.push(["", `${missingTotal} missing values. The pipeline fills them with the training median. Columns with many gaps carry weaker information.`]);
+  if (!items.length || !(res.errors || []).length) items.push(["ok", "Dataset accepted. You can start training."]);
+  alerts("val-alerts", items);
+
+  const gaps = Object.entries(res.missing_values || {}).filter(([, n]) => n > 0);
+  $("missing-table").hidden = !gaps.length;
+  $("missing-table").innerHTML = gaps.length ? `<table>
+    <thead><tr><th>Column</th><th class="num">Missing</th><th class="num">Share</th></tr></thead>
+    <tbody>${gaps.map(([c, n]) => `<tr><td>${escapeHtml(c)}</td><td class="num">${n}</td><td class="num">${fmt((n / res.rows) * 100, 1)}%</td></tr>`).join("")}</tbody></table>` : "";
 }
+
+// ---------- 2. Training ----------
+function updateTrainButton() {
+  const ok = validated && !(validated.errors || []).length;
+  $("train-btn").disabled = !ok;
+  $("train-hint").hidden = !!ok;
+}
+
+$("train-btn").addEventListener("click", async () => {
+  if (!validated || needKey()) return;
+  const sure = confirm(`Start training on "${validated.filename}" (${validated.rows} rows)?\n\nThis can take several minutes. The active model keeps serving users until you activate the new one.`);
+  if (!sure) return;
+
+  const btn = $("train-btn");
+  busy(btn, "Starting…");
+  $("train-status").hidden = false;
+  $("compare").hidden = true;
+  alerts("train-alerts", []);
+  try {
+    const { job_id } = await API.startTraining(validated.dataset_id, key());
+    $("train-job").textContent = `Job ${job_id}`;
+    poll(job_id);
+  } catch (err) {
+    alerts("train-alerts", [["error", err.message]]);
+    idle(btn);
+  }
+});
+
+function poll(jobId) {
+  clearTimeout(pollTimer);
+  const tick = async () => {
+    try {
+      const s = await API.getTrainingStatus(jobId, key());
+      $("train-state").textContent = { queued: "Queued", running: "Training…", succeeded: "Training finished", failed: "Training failed" }[s.status] || s.status;
+      $("train-bar").style.width = `${Math.round((s.progress ?? 0) * 100)}%`;
+      $("train-logs").textContent = (s.logs || []).join("\n");
+      $("train-logs").scrollTop = $("train-logs").scrollHeight;
+
+      if (s.status === "succeeded") {
+        idle($("train-btn"));
+        alerts("train-alerts", [["ok", `Candidate ${s.candidate ? s.candidate.version : ""} is ready. Review it below, then activate it in section 3 if it is better.`]]);
+        if (s.candidate) showComparison(s.candidate, !!s.mock);
+        loadVersions();
+        return;
+      }
+      if (s.status === "failed") {
+        idle($("train-btn"));
+        alerts("train-alerts", [["error", s.error || "Training failed. Check the logs above."]]);
+        return;
+      }
+      pollTimer = setTimeout(tick, 1500);
+    } catch (err) {
+      idle($("train-btn"));
+      alerts("train-alerts", [["error", "Lost contact with the training job: " + err.message]]);
+    }
+  };
+  tick();
+}
+
+async function showComparison(candidate, isMock) {
+  let active = null;
+  try {
+    const { models } = await API.listModels(key());
+    active = models.find((m) => m.status === "active");
+  } catch { /* show the candidate alone */ }
+
+  const rows = [["RMSE (mmol/g)", "rmse", true], ["MAE (mmol/g)", "mae", true], ["R²", "r2", false]];
+  const better = (c, a, lowerIsBetter) => (a == null ? "" : (lowerIsBetter ? c < a : c > a) ? "Candidate" : c === a ? "Same" : "Active");
+  $("compare").hidden = false;
+  $("cmp-mock").hidden = !isMock;
+  $("compare-table").innerHTML = `<table>
+    <thead><tr><th>Metric</th><th class="num">Candidate ${escapeHtml(candidate.version)}</th><th class="num">Active ${escapeHtml(active ? active.version : "–")}</th><th>Better</th></tr></thead>
+    <tbody>${rows.map(([label, k, low]) => {
+      const c = candidate.metrics[k];
+      const a = active ? active.metrics[k] : null;
+      return `<tr><td>${label}</td><td class="num">${fmt(c)}</td><td class="num">${fmt(a)}</td><td>${better(c, a, low)}</td></tr>`;
+    }).join("")}</tbody></table>`;
+}
+
+// ---------- 3. Versions ----------
+async function loadVersions() {
+  alerts("versions-alerts", []);
+  try {
+    const { models } = await API.listModels(key());
+    renderVersions(models);
+  } catch (err) {
+    $("versions-table").innerHTML = "";
+    alerts("versions-alerts", [["error", err.message]]);
+  }
+}
+
+function renderVersions(models) {
+  if (!models.length) { $("versions-table").innerHTML = '<p class="muted" style="padding:12px">No model versions yet.</p>'; return; }
+  $("versions-table").innerHTML = `<table>
+    <thead><tr><th>Version</th><th>Status</th><th>Created</th><th>Model</th><th class="num">RMSE</th><th class="num">MAE</th><th class="num">R²</th><th>Training data</th><th></th></tr></thead>
+    <tbody>${models.map((m) => `
+      <tr>
+        <td><code>${escapeHtml(m.version)}</code></td>
+        <td><span class="badge ${escapeHtml(m.status)}">${escapeHtml(m.status)}</span></td>
+        <td>${escapeHtml(fmtDate(m.created_at))}</td>
+        <td class="wrap-text">${escapeHtml(m.model_type)}</td>
+        <td class="num">${fmt(m.metrics && m.metrics.rmse)}</td>
+        <td class="num">${fmt(m.metrics && m.metrics.mae)}</td>
+        <td class="num">${fmt(m.metrics && m.metrics.r2)}</td>
+        <td class="wrap-text">${escapeHtml(m.dataset)}</td>
+        <td>${m.status === "candidate" ? `<button class="btn primary small" data-act="activate" data-v="${escapeHtml(m.version)}">Activate</button>`
+             : m.status === "previous" ? `<button class="btn danger small" data-act="rollback" data-v="${escapeHtml(m.version)}">Roll back to this</button>`
+             : ""}</td>
+      </tr>`).join("")}</tbody></table>`;
+}
+
+$("versions-table").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn || needKey()) return;
+  const version = btn.dataset.v;
+  const action = btn.dataset.act;
+  const message = action === "activate"
+    ? `Activate ${version}?\n\nEvery prediction on the site will use this model from now on. The current active model becomes "previous" and can be restored later.`
+    : `Roll back to ${version}?\n\nEvery prediction on the site will use this older model from now on.`;
+  if (!confirm(message)) return;
+
+  busy(btn, action === "activate" ? "Activating…" : "Rolling back…");
+  try {
+    const res = action === "activate" ? await API.activateModel(version, key()) : await API.rollbackModel(version, key());
+    if (res && res.models) renderVersions(res.models); else await loadVersions();
+    alerts("versions-alerts", [["ok", `${version} is now the active model.`]]);
+  } catch (err) {
+    idle(btn);
+    alerts("versions-alerts", [["error", err.message]]);
+  }
+});
+
+$("refresh-btn").addEventListener("click", () => { if (!needKey()) loadVersions(); });
+
+// Start on the login screen.
+showTools(false);
+$("admin-key").focus();
