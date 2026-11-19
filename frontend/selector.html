@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Find materials · CarbonLab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Styles used only on this page (kept here so css/style.css stays untouched). */
+    select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper); font: inherit; color: var(--graphite); }
+    .feed { margin-top: 18px; }
+    .feed-head { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: flex-start; }
+    .feed-best { text-align: right; }
+    .feed-best .big { font-family: var(--font-head); font-size: 2rem; font-weight: 700; line-height: 1; }
+    .chip { display: inline-block; font-size: 0.74rem; padding: 2px 9px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+    .chip.ok { background: var(--ok-bg); color: var(--ok); }
+    .chip.warn { background: var(--warn-bg); color: var(--warn); }
+    .chip.bad { background: var(--error-bg); color: var(--error); }
+    .chip.neutral { background: var(--line-soft); color: var(--slate); }
+    body:not(.is-admin) .tech, body:not(.is-admin) .tech-only { display: none; }
+    body.is-admin .user-only { display: none; }
+    td small { display: block; color: var(--slate); font-size: 0.78rem; }
+    td.num, th.num { text-align: right; white-space: nowrap; }
+    .src { margin: 12px 0 0; font-size: 0.82rem; color: var(--slate); }
+    .src a { color: var(--petrol); }
+    .sweep-svg { width: 100%; max-width: 640px; height: auto; display: block; margin-top: 10px; }
+    .big-num { font-family: var(--font-head); font-size: 2.2rem; font-weight: 700; }
+    .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 24px; }
+    #sources-list li { margin-bottom: 10px; font-size: 0.88rem; }
+  </style>
+</head>
+<body data-protected="user">
+  <header class="site-nav" id="site-nav"></header>
+
+  <main class="wrap">
+    <div class="page-head">
+      <h1>Find a material</h1>
+      <p>Tell us the temperature and pressure you will work at, and how much CO₂ you need the material to hold. CarbonLab predicts how real activated carbons, made from different plant waste (biomass) in published studies, would perform, and shows which ones are a good match.</p>
+    </div>
+
+    <form id="find-form" class="card" novalidate>
+      <h2>Your conditions</h2>
+      <div class="grid">
+        <div class="field" id="f-temp">
+          <label for="in-temp">Temperature <span class="unit">(°C)</span></label>
+          <input id="in-temp" type="number" step="any" inputmode="decimal" value="25">
+          <small class="hint" id="hint-temp"></small>
+        </div>
+        <div class="field" id="f-pres">
+          <label for="in-pres">Pressure <span class="unit">(bar)</span></label>
+          <input id="in-pres" type="number" step="any" inputmode="decimal" value="1">
+          <small class="hint" id="hint-pres"></small>
+        </div>
+        <div class="field" id="f-target">
+          <label for="in-target">CO₂ you need it to hold <span class="unit">(mmol/g)</span><span class="optional">optional</span></label>
+          <input id="in-target" type="number" step="any" inputmode="decimal" placeholder="e.g. 3">
+          <small class="hint">mmol/g = millimoles of CO₂ per gram of carbon. With a target, each carbon is marked as a good match, maybe, or unlikely.</small>
+        </div>
+        <div class="field" id="f-feed">
+          <label for="in-feed">Made from (biomass)</label>
+          <select id="in-feed"><option value="all">All sources</option></select>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn primary" id="find-btn">Find materials</button>
+      </div>
+      <ul class="alerts" id="find-alerts"></ul>
+    </form>
+
+    <section id="results" hidden>
+      <ul class="alerts" id="result-warnings"></ul>
+      <p class="callout" id="result-intro"></p>
+      <div id="groups"></div>
+      <p class="note">“Measured in paper” is what the authors measured at 25 °C and 1 bar. “Predicted” is the model's estimate at <em>your</em> conditions, with the range in which the true value is expected to fall. Where the two can be compared (25 °C, 1 bar), they show how far the model can be off.</p>
+
+      <details class="note" style="margin-top:12px">
+        <summary><strong>How to read the results</strong></summary>
+        <ul style="margin:8px 0 0 18px">
+          <li><strong>CO₂ it can hold</strong>: how much CO₂ one gram of the carbon is expected to take up, in mmol (1 mmol/g is about 44 g of CO₂ per kg of carbon). The grey “likely” numbers give the range the real value should fall in.</li>
+          <li><strong>Good match</strong>: the best estimate reaches your target (check the range: the real value can be a bit lower). <strong>Maybe</strong>: the best estimate is just below your target, but the range reaches it. <strong>Unlikely match</strong>: even the top of the range falls short.</li>
+          <li><strong>“Heated to 800 °C”</strong> is how the carbon was <em>made</em>. It is not the temperature you entered.</li>
+          <li><strong>Less certain</strong>: the study did not report every detail, so typical values were used for the missing ones.</li>
+          <li class="tech-only"><strong>Measured in paper</strong>: what the authors measured at 25 °C and 1 bar. Compare it with the prediction only if you entered 25 °C and 1 bar.</li>
+          <li class="tech-only"><strong>Some data missing</strong>: not every property was reported, so typical training values were used (shown to users as “Less certain”).</li>
+          <li>Hover over a column title for a short explanation.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="card" id="explore" hidden>
+      <h2 id="explore-title">Try changes</h2>
+      <p class="sub" id="explore-sub"></p>
+      <div class="grid" id="explore-fields"></div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="recalc-btn">Recalculate</button>
+        <button type="button" class="btn ghost" id="reset-btn">Reset to the original values</button>
+      </div>
+      <ul class="alerts" id="explore-alerts"></ul>
+      <div id="explore-result" class="callout" hidden></div>
+
+      <h3 style="margin-top:26px">Which value of one property gives the most CO₂?</h3>
+      <p class="sub">Pick one property. CarbonLab tries many values of it, keeps everything else as set above, and shows where the predicted CO₂ uptake is highest.</p>
+      <div class="grid">
+        <div class="field">
+          <label for="sweep-param">Property</label>
+          <select id="sweep-param"></select>
+        </div>
+      </div>
+      <div class="actions"><button type="button" class="btn primary" id="sweep-btn">Find the best value</button></div>
+      <div id="sweep-result"></div>
+    </section>
+
+    <section class="card" id="about-card" style="margin-top:18px">
+      <h2>Where these numbers come from, and what they can't tell you</h2>
+      <ul id="sources-list"></ul>
+      <p class="note"><strong>Please read:</strong> the model was trained on lab measurements of activated carbons at 0–30 °C and 0.1–1 bar, so results outside that are flagged as extrapolation. A carbon's properties depend on how it is made, not only on the biomass, so use this to shortlist what to test, not as a promise of performance. It does not cover cost, availability, speed of adsorption, repeated use, or humid and hot flue gas. “Not reported” values in a paper are replaced by typical training values, which is flagged as “Less certain” in the results.</p>
+    </section>
+  </main>
+
+  <footer class="foot wrap" id="foot"></footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/mock.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/selector.js"></script>
+</body>
+</html>

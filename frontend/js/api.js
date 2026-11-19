@@ -71,6 +71,8 @@ const API = (() => {
   }
 
   const m = () => CONFIG.USE_MOCK;
+  // The material finder needs the real model, so it is not available in demo mode.
+  const demoOff = () => Promise.reject(new Error("The material finder needs the real backend (turn off demo mode)."));
 
   return {
     // ---- accounts ----
@@ -98,6 +100,12 @@ const API = (() => {
       form.append("file", file);
       return request("/api/predict/batch", { method: "POST", form });
     },
+
+    // ---- material finder (logged-in users) ----
+    selectionCarbons: () => m() ? demoOff() : request("/api/selection/carbons"),
+    selectionScreen:  (body) => m() ? demoOff() : request("/api/selection/screen",  { method: "POST", body }),
+    selectionWhatIf:  (body) => m() ? demoOff() : request("/api/selection/what-if", { method: "POST", body }),
+    selectionSweep:   (body) => m() ? demoOff() : request("/api/selection/sweep",   { method: "POST", body }),
 
     // ---- admins (the backend checks the role on every call) ----
     uploadDataset: (file) => {

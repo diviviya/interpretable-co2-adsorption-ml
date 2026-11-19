@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import REPO_ROOT, settings
-from .routers import admin, auth, health, predict
+from .routers import admin, auth, health, predict, selection
 from .services import auth_service, history_service, hub_service, registry_service
 from .services.model_service import model_service
 
@@ -39,6 +39,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(predict.router)
+app.include_router(selection.router)
 app.include_router(auth.router)
 app.include_router(admin.router)
 

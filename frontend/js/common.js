@@ -152,6 +152,7 @@ async function logout() {
 // ---------- Navigation bar, demo banner and backend status ----------
 const NAV_LINKS = [
   { href: "predict.html", label: "Predict",  page: "predict", needs: "user" },
+  { href: "selector.html", label: "Find materials", page: "selector", needs: "user" },
   { href: "batch.html",   label: "Batch",    page: "batch",   needs: "user" },
   { href: "history.html", label: "History",  page: "history", needs: "user" },
   { href: "about.html",   label: "About",    page: "about" },

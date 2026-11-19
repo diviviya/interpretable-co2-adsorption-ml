@@ -8,6 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Technical sections are for admins/developers only; normal users get the simple page. */
+    body:not(.is-admin) .tech-only { display: none; }
+    body.is-admin .user-only { display: none; }
+    .trust-line { text-align: center; max-width: 640px; margin: 8px auto 0; color: var(--slate); }
+  </style>
 </head>
 <body>
   <header class="site-nav" id="site-nav"></header>
@@ -16,8 +22,8 @@
     <canvas class="hero-net" id="hero-net" aria-hidden="true"></canvas>
     <div class="wrap hero-inner">
       <p class="hero-name">CarbonLab</p>
-      <h1>Know a carbon's CO₂ uptake before you test it</h1>
-      <p class="hero-lede">Enter a biomass-derived porous carbon's surface area, composition and test conditions. An ensemble of six tree models estimates how much CO₂ it adsorbs, in mmol/g, and shows which inputs drove the number.</p>
+      <h1>Find the best carbon for capturing CO₂, before you test it in the lab</h1>
+      <p class="hero-lede">Tell us your conditions and how much CO₂ you need. CarbonLab shows which carbons made from plant waste are likely to work.</p>
       <div class="actions" id="hero-actions"></div>
     </div>
     <p class="hero-hint" id="hero-hint">Move your pointer over the molecules</p>
@@ -26,23 +32,25 @@
   <main class="wrap">
     <div class="uses">
       <div class="use">
+        <svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="15" cy="15" r="9"/><path d="M22 22l8 8"/></svg>
+        <h3>Find a material</h3>
+        <p>Pick your conditions and the CO₂ you need. See which carbons are a good match.</p>
+      </div>
+      <div class="use">
         <svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="5" width="24" height="24" rx="4"/><path d="M11 13h12M11 18h8M11 23h5"/></svg>
-        <h3>Predict one material</h3>
-        <p>Ten inputs, one estimate. Every field is checked against the range of the training data.</p>
+        <h3>Predict one carbon</h3>
+        <p>Enter its properties and get an estimate of how much CO₂ it can hold.</p>
       </div>
       <div class="use">
         <svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 4h13l6 6v20H8z"/><path d="M21 4v6h6M12 17h11M12 21h11M12 25h7"/></svg>
-        <h3>Predict a whole CSV</h3>
-        <p>Upload up to 5,000 rows and download the predictions as a new CSV.</p>
-      </div>
-      <div class="use">
-        <svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 9h8M9 15h10M15 21h7M19 27h10"/><path d="M5 5v24" stroke-dasharray="2 3"/></svg>
-        <h3>See why</h3>
-        <p>A SHAP waterfall shows how much each input moved the estimate up or down.</p>
+        <h3>Predict a whole file</h3>
+        <p>Upload a spreadsheet (CSV) and download the results.</p>
       </div>
     </div>
 
-    <section class="section">
+    <p class="trust-line user-only">Results are estimates, always shown with a likely range. Use them to choose what to test, then confirm in the lab. <a href="about.html">How it works</a></p>
+
+    <section class="section tech-only">
       <h2>How the model was built</h2>
       <p class="lede">The method follows Fan et al. (2026), first developed for MgO sorbents, applied here to biomass-derived porous carbons.</p>
       <ol class="pipeline">
@@ -53,7 +61,7 @@
       </ol>
     </section>
 
-    <section class="section">
+    <section class="section tech-only">
       <h2>The model in use</h2>
       <p class="lede">These numbers are read live from the server, so they change if an admin activates a new model.</p>
       <div class="model-sheet" id="model-sheet">
@@ -93,12 +101,13 @@
   <script>
     // Landing page: public. Buttons depend on whether you're logged in.
     renderNav("home");
+    document.body.classList.toggle("is-admin", !!(Auth.user() && ["admin", "developer"].includes(Auth.user().role)));
     startCO2Network($("hero-net"), $("hero-band"));
     if (matchMedia("(pointer: coarse)").matches) $("hero-hint").textContent = "Touch and drag over the molecules";
 
     const user = Auth.user();
     $("hero-actions").innerHTML = user
-      ? `<a class="btn primary" href="predict.html">Open the predictor</a><a class="btn ghost" href="batch.html">Predict a CSV</a>`
+      ? `<a class="btn primary" href="selector.html">Find a material</a><a class="btn ghost" href="predict.html">Predict one carbon</a>`
       : `<a class="btn primary signup-only" href="login.html?mode=signup">Create an account</a><a class="btn ghost" href="login.html">Log in</a>`;
     $("cta-band").hidden = !!user;
     applySignupSetting();
