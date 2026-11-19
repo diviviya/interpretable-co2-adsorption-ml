@@ -21,6 +21,13 @@
     .chip.neutral { background: var(--line-soft); color: var(--slate); }
     body:not(.is-admin) .tech, body:not(.is-admin) .tech-only { display: none; }
     body.is-admin .user-only { display: none; }
+    .top-list { margin: 8px 0 0; padding-left: 20px; }
+    .top-list li { margin-bottom: 14px; }
+    .top-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+    .comp-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; }
+    .comp-cell { background: #fff; border-radius: 8px; padding: 6px 12px; text-align: center; min-width: 78px; }
+    .comp-sym { display: block; font-size: 0.72rem; color: var(--slate); font-weight: 600; }
+    .comp-val { font-weight: 650; white-space: nowrap; }
     td small { display: block; color: var(--slate); font-size: 0.78rem; }
     td.num, th.num { text-align: right; white-space: nowrap; }
     .src { margin: 12px 0 0; font-size: 0.82rem; color: var(--slate); }
@@ -71,7 +78,7 @@
 
     <section id="results" hidden>
       <ul class="alerts" id="result-warnings"></ul>
-      <p class="callout" id="result-intro"></p>
+      <div class="callout" id="result-intro"></div>
       <div id="groups"></div>
       <p class="note">“Measured in paper” is what the authors measured at 25 °C and 1 bar. “Predicted” is the model's estimate at <em>your</em> conditions, with the range in which the true value is expected to fall. Where the two can be compared (25 °C, 1 bar), they show how far the model can be off.</p>
 

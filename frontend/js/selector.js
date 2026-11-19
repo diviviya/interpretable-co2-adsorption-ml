@@ -45,6 +45,9 @@ const VERDICT = {
 const chip = (text, kind, title = "") =>
   `<span class="chip ${kind}"${title ? ` title="${escapeHtml(title)}"` : ""}>${escapeHtml(text)}</span>`;
 
+// number, or a dash when the paper did not report it
+const nv = (v, d) => (v === null || v === undefined ? "–" : fmt(v, d));
+
 const rangeText = (iv) => (iv ? `${fmt(iv.lower, 2)} – ${fmt(iv.upper, 2)}` : "");
 
 function setAlerts(listId, items, kind = "error") {
@@ -136,28 +139,63 @@ function renderResults(res) {
   $("groups").innerHTML = res.feedstocks.map(groupHtml).join("");
 }
 
-// One short, plain answer shown above the list.
+// A row of small labelled boxes ("–" = not reported in the paper).
+const statBox = (label, title, v, unit, digits) =>
+  `<div class="comp-cell" title="${escapeHtml(title)}"><span class="comp-sym">${label}</span>` +
+  `<span class="comp-val">${v === null || v === undefined ? "–" : fmt(v, digits) + unit}</span></div>`;
+
+// The best carbons, each with its full properties, ready to open in "Try changes".
+function topListHtml(list, cond) {
+  return `<ol class="top-list">` + list.slice(0, 3).map((c) => {
+    const v = c.verdict ? VERDICT[c.verdict] : null;
+    return `
+    <li>
+      <div class="top-head">
+        <div>
+          <strong>${escapeHtml(c.feed)}, ${escapeHtml(c.label)}</strong>
+          <span class="big-num" style="font-size:1.25rem">${fmt(c.predicted, 2)}</span> mmol/g
+          <span class="muted">${c.interval ? "· likely " + rangeText(c.interval) : ""}</span>
+          ${v ? chip(v[0], v[1], v[2]) : ""}
+          <small class="muted" style="display:block">${escapeHtml(friendlyActivation(c.activation))}</small>
+        </div>
+        <button type="button" class="btn ghost" data-explore="${escapeHtml(c.id)}">Try changes</button>
+      </div>
+      <div class="comp-row">
+        ${statBox("Surface area", "Surface area, m²/g", c.surface_area, " m²/g", 0)}
+        ${statBox("Total pore vol.", "Total pore volume, cm³/g", c.total_pore_volume, " cm³/g", 2)}
+        ${statBox("Micropore vol.", "Micropore (tiny-pore) volume, cm³/g", c.micropore_volume, " cm³/g", 2)}
+        ${statBox("C", "Carbon, share by weight", c.carbon, "%", 1)}
+        ${statBox("H", "Hydrogen, share by weight", c.hydrogen, "%", 1)}
+        ${statBox("N", "Nitrogen, share by weight", c.nitrogen, "%", 1)}
+        ${statBox("O", "Oxygen, share by weight", c.oxygen, "%", 1)}
+        ${statBox("S", "Sulfur, share by weight", c.sulfur, "%", 1)}
+        ${statBox("Temp", "Temperature used for the prediction", cond.temperature, " °C", 0)}
+        ${statBox("Pressure", "Pressure used for the prediction", cond.pressure, " bar", 2)}
+      </div>
+    </li>`;
+  }).join("") + `</ol>`;
+}
+
+// One short, plain answer shown above the list, followed by the best carbons.
 function summaryHtml(res) {
   const all = [];
   for (const g of res.feedstocks) for (const c of g.carbons) all.push({ ...c, feed: g.name });
   all.sort((a, b) => b.predicted - a.predicted);
-  const name = (c) => `<strong>${escapeHtml(c.feed)}, ${escapeHtml(c.label)}</strong> (${fmt(c.predicted, 2)} mmol/g)`;
-  const top = (list) => list.slice(0, 3).map(name).join("; ");
   const cond = res.conditions;
   const where = `at ${fmt(cond.temperature)} °C and ${fmt(cond.pressure)} bar`;
   const t = res.target_uptake;
   if (!t) {
-    return `Highest predicted CO₂ uptake ${where}: ${name(all[0])}. Enter the amount you need to see which carbons are a good match.`;
+    return `<p style="margin:0 0 6px">Highest predicted CO₂ uptake ${where}. Enter the amount you need to see which carbons are a good match.</p>${topListHtml(all, cond)}`;
   }
   const good = all.filter((c) => c.verdict === "meets");
   const maybe = all.filter((c) => c.verdict === "borderline");
   if (good.length) {
-    return `${good.length} of ${all.length} carbons are a good match for ${fmt(t)} mmol/g ${where}. Top picks: ${top(good)}.`;
+    return `<p style="margin:0 0 6px">${good.length} of ${all.length} carbons are a good match for ${fmt(t)} mmol/g ${where}. Top picks:</p>${topListHtml(good, cond)}`;
   }
   if (maybe.length) {
-    return `No carbon\u2019s best estimate reaches ${fmt(t)} mmol/g ${where}, but ${maybe.length} come close and might. Best chances: ${top(maybe)}.`;
+    return `<p style="margin:0 0 6px">No carbon\u2019s best estimate reaches ${fmt(t)} mmol/g ${where}, but ${maybe.length} come close and might. Best chances:</p>${topListHtml(maybe, cond)}`;
   }
-  return `None of the carbons is likely to reach ${fmt(t)} mmol/g ${where}. The highest predicted is ${name(all[0])}. Try a lower target or different conditions.`;
+  return `<p style="margin:0 0 6px">None of the carbons is likely to reach ${fmt(t)} mmol/g ${where}. The highest predicted is:</p>${topListHtml(all, cond)} <p class="muted" style="margin:6px 0 0">Try a lower target or different conditions.</p>`;
 }
 
 function groupHtml(g) {
@@ -185,6 +223,14 @@ function groupHtml(g) {
         <th>Carbon and how it was made</th>
         <th class="num tech" title="Surface available for CO₂ to stick to, per gram of carbon.">Surface area (m²/g)</th>
         <th class="num tech" title="Volume of the tiniest pores, which hold CO₂ best.">Tiny-pore volume (cm³/g)</th>
+        <th class="num tech" title="All the empty space inside the carbon.">Total pore volume (cm³/g)</th>
+        <th class="num tech" title="Carbon, share by weight.">C (%)</th>
+        <th class="num tech" title="Hydrogen, share by weight.">H (%)</th>
+        <th class="num tech" title="Nitrogen, share by weight.">N (%)</th>
+        <th class="num tech" title="Oxygen, share by weight.">O (%)</th>
+        <th class="num tech" title="Sulfur, share by weight.">S (%)</th>
+        <th class="num tech" title="Temperature used for the prediction.">Temp (°C)</th>
+        <th class="num tech" title="Pressure used for the prediction.">Pressure (bar)</th>
         <th class="num" title="How much CO₂ one gram of the carbon is expected to hold, in millimoles. 1 mmol/g is about 44 g of CO₂ per kg of carbon.">CO₂ it can hold (mmol/g)</th>
         <th class="num tech" title="What the authors measured in the lab at 25 °C and 1 bar.">Measured in paper (mmol/g)</th>
         <th class="tech" title="Whether the paper reported all the main properties the model needs.">Data completeness</th><th></th>
@@ -228,12 +274,25 @@ function rowHtml(c) {
       <td><strong title="Name used in the source paper">${escapeHtml(c.label)}</strong><small title="${escapeHtml(c.activation)}">${escapeHtml(friendlyActivation(c.activation))}</small></td>
       <td class="num tech">${fmt(c.surface_area, 0)}</td>
       <td class="num tech">${c.micropore_volume === null ? "–" : fmt(c.micropore_volume, 2)}</td>
+      <td class="num tech">${nv(c.total_pore_volume, 2)}</td>
+      <td class="num tech">${nv(c.carbon, 1)}</td>
+      <td class="num tech">${nv(c.hydrogen, 1)}</td>
+      <td class="num tech">${nv(c.nitrogen, 1)}</td>
+      <td class="num tech">${nv(c.oxygen, 1)}</td>
+      <td class="num tech">${nv(c.sulfur, 1)}</td>
+      <td class="num tech">${fmt(lastScreen.conditions.temperature)}</td>
+      <td class="num tech">${fmt(lastScreen.conditions.pressure, 2)}</td>
       <td class="num"><strong>${fmt(c.predicted, 2)}</strong><small title="The real value is probably in this range.">${c.interval ? "likely " + rangeText(c.interval) : ""}</small>${v ? chip(v[0], v[1], v[2]) : ""}${c.verdict === "meets" && c.confident === false ? `<small>Could fall a little short</small>` : ""}${c.quality.complete ? "" : `<small class="user-only">Less certain: the paper did not report every detail.</small>`}</td>
       <td class="num tech">${c.reported_uptake_25c_1bar === null ? "–" : fmt(c.reported_uptake_25c_1bar, 2)}</td>
       <td class="tech">${quality}</td>
       <td><button type="button" class="btn ghost" data-explore="${escapeHtml(c.id)}">Try changes</button></td>
     </tr>`;
 }
+
+$("result-intro").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-explore]");
+  if (btn) openExplore(btn.dataset.explore);
+});
 
 $("groups").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-explore]");
